@@ -17,7 +17,7 @@
 extern crate olm_sys;
 extern crate ring;
 
-mod account;
+pub mod account;
 
 #[cfg(test)]
 mod tests {
