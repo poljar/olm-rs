@@ -4,5 +4,5 @@ version = "0.1.0"
 authors = ["jhaye <jhaye@gmx.de>"]
 
 [dependencies]
-"olm-sys" = { git = "https://gitlab.gnome.org/BrainBlasted/olm-sys" }
+olm-sys = "0.1.0"
 ring = "0.12.1"
