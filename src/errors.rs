@@ -14,8 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate olm_sys;
-extern crate ring;
+use olm_sys;
 
-pub mod account;
-mod errors;
+pub fn olm_error() -> usize {
+    let result;
+    unsafe {
+        result = olm_sys::olm_error();
+    }
+    result
+}
+
+/// All errors that could be caused by an operation regarding an OlmAccount.
+/// Errors are named exactly like the ones in libolm.
+pub enum OlmAccountError {
+    BadAccountKey,
+    BadMessageKeyId,
+    InvalidBase64,
+    NotEnoughRandom,
+    OutputBufferTooSmall,
+    Unknown,
+}
