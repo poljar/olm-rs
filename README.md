@@ -8,7 +8,26 @@ Currently the wrapper part of this library is being implemented while the manage
 
 ### Building
 
-For generating the C bindings used by this library, you first have to install libolm: 
+For generating the C bindings used by this library, you first have to install libolm.
+
+#### Debian
+
+Debian has packages for libolm in testing (buster) and unstable (sid), called libolm2 and libolm-dev.
+They can be installed with the following command:
+
+`# apt install libolm2 libolm-dev`
+
+#### Arch Linux
+
+There is a package in the AUR for libolm under the name libolm. Use your AUR helper of choice or clone
+the AUR package and install with:
+
+`$ makepkg -si`
+
+#### Manual Install
+
+If your distribution does not ship libolm, you can install it with the following commands:
+
 ```
 $ git clone https://git.matrix.org/git/olm
 $ cd olm
