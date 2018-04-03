@@ -17,6 +17,9 @@
 use olm_sys;
 use ring::rand::{SecureRandom, SystemRandom};
 use std::mem;
+use errors;
+use errors::OlmAccountError;
+use std::ffi::CStr;
 
 /// An olm account manages all cryptographic keys used on a device.
 pub struct OlmAccount {
@@ -33,6 +36,7 @@ impl OlmAccount {
     pub fn new() -> Self {
         let olm_account_ptr;
         let mut olm_account_buf: Vec<u8>;
+        let create_error;
         unsafe {
             // allocate buffer for OlmAccount to be written into
             olm_account_buf = vec![0; olm_sys::olm_account_size()];
@@ -45,8 +49,12 @@ impl OlmAccount {
             }
 
             let random_bytes_ptr = random_bytes.as_mut_ptr() as *mut _;
-            // TODO: handle potential errors
-            olm_sys::olm_create_account(olm_account_ptr, random_bytes_ptr, 1024);
+            create_error = olm_sys::olm_create_account(olm_account_ptr, random_bytes_ptr, 1024);
+        }
+
+        // No instance of OlmAccount exists yet, so we have to assume the error was with the random data
+        if create_error == errors::olm_error() {
+            panic!("Not enough random data was supplied for creation of OlmAccount!");
         }
 
         OlmAccount {
@@ -58,6 +66,7 @@ impl OlmAccount {
     /// Returns the account's public identity keys already formatted as JSON and BASE64.
     pub fn identity_keys(&mut self) -> String {
         let identity_keys_result: String;
+        let identity_keys_error;
         unsafe {
             // get buffer size of identity keys
             let keys_size = olm_sys::olm_account_identity_keys_length(self.olm_account_ptr);
@@ -66,7 +75,11 @@ impl OlmAccount {
 
             // write keys data in the keys buffer
             // TODO: handle potential errors
-            olm_sys::olm_account_identity_keys(self.olm_account_ptr, identity_keys_ptr, keys_size);
+            identity_keys_error = olm_sys::olm_account_identity_keys(
+                self.olm_account_ptr,
+                identity_keys_ptr,
+                keys_size,
+            );
 
             // To avoid a double memory free we have to forget about our buffer,
             // since we are using the buffer's data to construct the final string below.
@@ -78,6 +91,33 @@ impl OlmAccount {
                 String::from_raw_parts(identity_keys_ptr as *mut u8, keys_size, keys_size);
         }
 
+        if identity_keys_error == errors::olm_error() {
+            match self.last_error() {
+                OlmAccountError::OutputBufferTooSmall => {
+                    panic!("Buffer for OlmAccount's identity keys is too small!")
+                }
+                _ => panic!("Unknown error occured while getting OlmAccount's identity keys!"),
+            }
+        }
+
         identity_keys_result
+    }
+
+    /// Returns the last error that occured for an OlmAccount.
+    /// Since error codes are encoded as CStrings by libolm,
+    /// OlmAccountError::Unknown is returned on an unknown error code.
+    fn last_error(&self) -> OlmAccountError {
+        let error;
+        // get CString error code and convert to String
+        unsafe {
+            let error_raw = olm_sys::olm_account_last_error(self.olm_account_ptr);
+            error = CStr::from_ptr(error_raw).to_str().unwrap();
+        }
+
+        match error {
+            "NOT_ENOUGH_RANDOM" => OlmAccountError::NotEnoughRandom,
+            "OUTPUT_BUFFER_TOO_SMALL" => OlmAccountError::OutputBufferTooSmall,
+            _ => OlmAccountError::Unknown,
+        }
     }
 }
