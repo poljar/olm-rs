@@ -74,7 +74,6 @@ impl OlmAccount {
             let identity_keys_ptr = identity_keys_buf.as_mut_ptr() as *mut _;
 
             // write keys data in the keys buffer
-            // TODO: handle potential errors
             identity_keys_error = olm_sys::olm_account_identity_keys(
                 self.olm_account_ptr,
                 identity_keys_ptr,
