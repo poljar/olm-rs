@@ -119,4 +119,46 @@ impl OlmAccount {
             _ => OlmAccountError::Unknown,
         }
     }
+
+    /// Returns the signature of the supplied byte slice
+    pub fn sign_bytes(&self, input_buf: &mut [u8]) -> String {
+        let signature_result;
+        let signature_error;
+        unsafe {
+            let input_ptr = input_buf.as_mut_ptr() as *mut _;
+            let signature_len = olm_sys::olm_account_signature_length(self.olm_account_ptr);
+            let mut signature_buf: Vec<u8> = vec![0; signature_len];
+            let signature_ptr = signature_buf.as_mut_ptr() as *mut _;
+
+            signature_error = olm_sys::olm_account_sign(
+                self.olm_account_ptr,
+                input_ptr,
+                input_buf.len(),
+                signature_ptr,
+                signature_len,
+            );
+
+            mem::forget(signature_buf);
+
+            signature_result =
+                String::from_raw_parts(signature_ptr as *mut u8, signature_len, signature_len);
+        }
+
+        if signature_error == errors::olm_error() {
+            match self.last_error() {
+                OlmAccountError::OutputBufferTooSmall => {
+                    panic!("Buffer for OlmAccount's signature is too small!")
+                }
+                _ => panic!("Unknown error occured while getting OlmAccount's identity keys!"),
+            }
+        }
+
+        signature_result
+    }
+
+    /// Convenience function that converts the UTF-8 message
+    /// to bytes and then calls sign_bytes(), returning its output.
+    pub fn sign_utf8_msg(&self, msg: &mut str) -> String {
+        unsafe { self.sign_bytes(msg.as_bytes_mut()) }
+    }
 }

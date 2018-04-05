@@ -46,3 +46,22 @@ fn operational_rng() {
     let identity_keys2 = olm_account2.identity_keys();
     assert_ne!(identity_keys, identity_keys2);
 }
+
+#[test]
+fn signatures_valid() {
+    // test signature being valid base64
+    let olm_account = OlmAccount::new();
+    let mut bytes: Vec<u8> = vec![72, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 33];
+    let signature = olm_account.sign_bytes(bytes.as_mut_slice());
+    assert_eq!(signature.len(), 86);
+    base64::decode(&signature).unwrap();
+
+    // test sign_bytes() and sign_utf8_msg() on identical input
+    let mut message = String::from("Hello world!");
+    let mut message_same = String::from("Hello world!");
+    let message_as_bytes = unsafe { message_same.as_bytes_mut() };
+    assert_eq!(
+        olm_account.sign_bytes(message_as_bytes),
+        olm_account.sign_utf8_msg(message.as_mut_str())
+    )
+}
