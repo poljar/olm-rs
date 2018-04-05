@@ -2,7 +2,7 @@
 
 This project is dedicated towards creating a safe wrapper for [libolm](https://git.matrix.org/git/olm/about/) and an easy management solution for E2E encryption for [Matrix](https://matrix.org/) clients in Rust.
 
-Matrix room for discussion: *!dtTRILMxRNPsJTSpfH:matrix.org*
+Matrix room for discussion: *#olm-rs:matrix.org*
 
 Currently the wrapper part of this library is being implemented while the management functionality is being planned for. Please note that this library is not production ready!
 
