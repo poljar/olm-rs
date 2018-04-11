@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use olm_sys;
-use ring::rand::{SecureRandom, SystemRandom};
-use std::mem;
 use errors;
 use errors::OlmAccountError;
+use olm_sys;
+use ring::rand::{SecureRandom, SystemRandom};
 use std::ffi::CStr;
+use std::mem;
 
 /// An olm account manages all cryptographic keys used on a device.
 pub struct OlmAccount {
@@ -160,5 +160,13 @@ impl OlmAccount {
     /// to bytes and then calls sign_bytes(), returning its output.
     pub fn sign_utf8_msg(&self, msg: &mut str) -> String {
         unsafe { self.sign_bytes(msg.as_bytes_mut()) }
+    }
+}
+
+impl Drop for OlmAccount {
+    fn drop(&mut self) {
+        unsafe {
+            olm_sys::olm_clear_account(self.olm_account_ptr);
+        }
     }
 }
