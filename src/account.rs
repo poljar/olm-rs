@@ -42,14 +42,16 @@ impl OlmAccount {
             olm_account_buf = vec![0; olm_sys::olm_account_size()];
             olm_account_ptr = olm_sys::olm_account(olm_account_buf.as_mut_ptr() as *mut _);
 
-            let mut random_bytes: Vec<u8> = vec![0; 1024]; // length of random_bytes buffer is guessed
+            // determine optimal length of the random buffer
+            let random_len = olm_sys::olm_create_account_random_length(olm_account_ptr);
+            let mut random_buf: Vec<u8> = vec![0; random_len];
             {
                 let rng = SystemRandom::new();
-                rng.fill(random_bytes.as_mut_slice()).unwrap();
+                rng.fill(random_buf.as_mut_slice()).unwrap();
             }
 
-            let random_bytes_ptr = random_bytes.as_mut_ptr() as *mut _;
-            create_error = olm_sys::olm_create_account(olm_account_ptr, random_bytes_ptr, 1024);
+            let random_ptr = random_buf.as_mut_ptr() as *mut _;
+            create_error = olm_sys::olm_create_account(olm_account_ptr, random_ptr, random_len);
         }
 
         // No instance of OlmAccount exists yet, so we have to assume the error was with the random data
