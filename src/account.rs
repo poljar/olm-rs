@@ -70,16 +70,16 @@ impl OlmAccount {
         let identity_keys_result: String;
         let identity_keys_error;
         unsafe {
-            // get buffer size of identity keys
-            let keys_size = olm_sys::olm_account_identity_keys_length(self.olm_account_ptr);
-            let mut identity_keys_buf: Vec<u8> = vec![0; keys_size];
+            // get buffer length of identity keys
+            let keys_len = olm_sys::olm_account_identity_keys_length(self.olm_account_ptr);
+            let mut identity_keys_buf: Vec<u8> = vec![0; keys_len];
             let identity_keys_ptr = identity_keys_buf.as_mut_ptr() as *mut _;
 
             // write keys data in the keys buffer
             identity_keys_error = olm_sys::olm_account_identity_keys(
                 self.olm_account_ptr,
                 identity_keys_ptr,
-                keys_size,
+                keys_len,
             );
 
             // To avoid a double memory free we have to forget about our buffer,
@@ -89,7 +89,7 @@ impl OlmAccount {
             // String is constructed from the keys buffer and memory is freed after exiting the scope.
             // No memory should be leaked.
             identity_keys_result =
-                String::from_raw_parts(identity_keys_ptr as *mut u8, keys_size, keys_size);
+                String::from_raw_parts(identity_keys_ptr as *mut u8, keys_len, keys_len);
         }
 
         if identity_keys_error == errors::olm_error() {
