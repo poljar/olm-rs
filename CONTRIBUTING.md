@@ -10,6 +10,7 @@ Before filing a merge request, make sure of the following things:
 * all unit tests pass
 * your code is formatted using `rustfmt`, for consistency
 * variables that store buffers for libolm to write into end with `_buf`
+* variables that store the length of a buffer for libolm end with `_len`
 * variables that store raw pointers used as function parameters for libolm end with `_ptr`
 
 If you added functionality that is currently not coverd by unit tests, it would be highly appreciated if you could implemented the according test cases.
