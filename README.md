@@ -35,6 +35,8 @@ $ make
 # make install
 ```
 
+Please note that the installation dir for libolm is `/usr/local/lib` and has to be in `LD_LIBRARY_PATH` for building to work.
+
 After that it's just a simple `cargo build`.
 
 ### Contributing
