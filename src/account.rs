@@ -25,12 +25,12 @@ use std::mem;
 pub struct OlmAccount {
     // Reserved memory buffer holding data of an OlmAccount for libolm
     _olm_account_buf: Vec<u8>,
-    // Pointer by which libolm aquires the data saved in an instance of OlmAccount
+    // Pointer by which libolm acquires the data saved in an instance of OlmAccount
     olm_account_ptr: *mut olm_sys::OlmAccount,
 }
 
 impl OlmAccount {
-    /// Creates a new instance of OlmAccount. During the instanciation the Ed25519 fingerprint key pair
+    /// Creates a new instance of OlmAccount. During the instantiation the Ed25519 fingerprint key pair
     /// and the Curve25519 identity key pair are generated. For more information see:
     /// https://matrix.org/docs/guides/e2e_implementation.html#keys-used-in-end-to-end-encryption
     pub fn new() -> Self {
@@ -162,6 +162,11 @@ impl OlmAccount {
     /// to bytes and then calls sign_bytes(), returning its output.
     pub fn sign_utf8_msg(&self, msg: &mut str) -> String {
         unsafe { self.sign_bytes(msg.as_bytes_mut()) }
+    }
+
+    /// Maximum number of one time keys that this OlmAccount can hold.
+    pub fn max_number_of_one_time_keys(&self) -> usize {
+        unsafe { olm_sys::olm_account_max_number_of_one_time_keys(self.olm_account_ptr) }
     }
 }
 

@@ -65,3 +65,10 @@ fn signatures_valid() {
         olm_account.sign_utf8_msg(message.as_mut_str())
     )
 }
+
+#[test]
+fn one_time_keys_valid() {
+    let olm_account = OlmAccount::new();
+    let max_number_otks = olm_account.max_number_of_one_time_keys();
+    assert_eq!(100, max_number_otks);
+}
