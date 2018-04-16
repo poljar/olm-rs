@@ -97,14 +97,14 @@ impl OlmAccount {
                 OlmAccountError::OutputBufferTooSmall => {
                     panic!("Buffer for OlmAccount's identity keys is too small!")
                 }
-                _ => panic!("Unknown error occured while getting OlmAccount's identity keys!"),
+                _ => panic!("Unknown error occurred while getting OlmAccount's identity keys!"),
             }
         }
 
         identity_keys_result
     }
 
-    /// Returns the last error that occured for an OlmAccount.
+    /// Returns the last error that occurred for an OlmAccount.
     /// Since error codes are encoded as CStrings by libolm,
     /// OlmAccountError::Unknown is returned on an unknown error code.
     fn last_error(&self) -> OlmAccountError {
@@ -151,7 +151,7 @@ impl OlmAccount {
                 OlmAccountError::OutputBufferTooSmall => {
                     panic!("Buffer for OlmAccount's signature is too small!")
                 }
-                _ => panic!("Unknown error occured while getting OlmAccount's identity keys!"),
+                _ => panic!("Unknown error occurred while getting OlmAccount's identity keys!"),
             }
         }
 
