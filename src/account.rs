@@ -168,6 +168,45 @@ impl OlmAccount {
     pub fn max_number_of_one_time_keys(&self) -> usize {
         unsafe { olm_sys::olm_account_max_number_of_one_time_keys(self.olm_account_ptr) }
     }
+
+    // Generates the supplied number of one time keys.
+    pub fn generate_one_time_keys(&mut self, number_of_keys: usize) {
+        let generate_error;
+        unsafe {
+            // Get correct length for the random buffer
+            let random_len = olm_sys::olm_account_generate_one_time_keys_random_length(
+                self.olm_account_ptr,
+                number_of_keys,
+            );
+
+            // Construct and populate random buffer
+            let mut random_buf: Vec<u8> = vec![0; random_len];
+            {
+                let rng = SystemRandom::new();
+                rng.fill(random_buf.as_mut_slice()).unwrap();
+            }
+            let random_ptr = random_buf.as_mut_ptr() as *mut _;
+
+            // Call function for generating one time keys
+            generate_error = olm_sys::olm_account_generate_one_time_keys(
+                self.olm_account_ptr,
+                number_of_keys,
+                random_ptr,
+                random_len,
+            );
+        }
+
+        if generate_error == errors::olm_error() {
+            match self.last_error() {
+                OlmAccountError::NotEnoughRandom => {
+                    panic!("Insufficient random data for generating one time keys for OlmAccount!")
+                }
+                _ => {
+                    panic!("Unknown error occurred, while generating one time keys for OlmAccount!")
+                }
+            }
+        }
+    }
 }
 
 impl Drop for OlmAccount {

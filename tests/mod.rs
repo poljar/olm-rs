@@ -68,7 +68,9 @@ fn signatures_valid() {
 
 #[test]
 fn one_time_keys_valid() {
-    let olm_account = OlmAccount::new();
+    let mut olm_account = OlmAccount::new();
     let max_number_otks = olm_account.max_number_of_one_time_keys();
     assert_eq!(100, max_number_otks);
+
+    olm_account.generate_one_time_keys(20);
 }
