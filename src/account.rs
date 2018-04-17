@@ -207,6 +207,40 @@ impl OlmAccount {
             }
         }
     }
+
+    pub fn one_time_keys(&mut self) -> String {
+        let otks_result: String;
+        let otks_error;
+        unsafe {
+            // get buffer length of OTKs
+            let otks_len = olm_sys::olm_account_one_time_keys_length(self.olm_account_ptr);
+            let mut otks_buf: Vec<u8> = vec![0; otks_len];
+            let otks_ptr = otks_buf.as_mut_ptr() as *mut _;
+
+            // write OTKs data in the OTKs buffer
+            otks_error =
+                olm_sys::olm_account_one_time_keys(self.olm_account_ptr, otks_ptr, otks_len);
+
+            // To avoid a double memory free we have to forget about our buffer,
+            // since we are using the buffer's data to construct the final string below.
+            mem::forget(otks_buf);
+
+            // String is constructed from the OTKs buffer and memory is freed after exiting the scope.
+            // No memory should be leaked.
+            otks_result = String::from_raw_parts(otks_ptr as *mut u8, otks_len, otks_len);
+        }
+
+        if otks_error == errors::olm_error() {
+            match self.last_error() {
+                OlmAccountError::OutputBufferTooSmall => {
+                    panic!("Buffer for OlmAccount's one time keys is too small!")
+                }
+                _ => panic!("Unknown error occurred while getting OlmAccount's one time keys!"),
+            }
+        }
+
+        otks_result
+    }
 }
 
 impl Drop for OlmAccount {
