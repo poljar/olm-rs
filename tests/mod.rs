@@ -87,4 +87,12 @@ fn one_time_keys_valid() {
         let key = entry.1.as_str().unwrap();
         base64::decode(&key).unwrap();
     }
+
+    olm_account.mark_keys_as_published();
+
+    // empty read of one time keys after marking as published
+    let otks_empty = olm_account.one_time_keys();
+    let otks_empty_json = json::parse(&otks_empty).unwrap();
+    assert!(otks_empty_json["curve25519"].is_object());
+    assert!(otks_empty_json["curve25519"].is_empty());
 }
