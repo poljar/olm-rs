@@ -208,6 +208,7 @@ impl OlmAccount {
         }
     }
 
+    // Gets the OlmAccount's one time keys formatted as JSON.
     pub fn one_time_keys(&mut self) -> String {
         let otks_result: String;
         let otks_error;
@@ -240,6 +241,13 @@ impl OlmAccount {
         }
 
         otks_result
+    }
+
+    // Mark the current set of keys as published.
+    pub fn mark_keys_as_published(&mut self) {
+        unsafe {
+            olm_sys::olm_account_mark_keys_as_published(self.olm_account_ptr);
+        }
     }
 }
 
