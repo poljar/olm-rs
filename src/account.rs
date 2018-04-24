@@ -25,12 +25,12 @@ use std::mem;
 pub struct OlmAccount {
     // Reserved memory buffer holding data of an OlmAccount for libolm
     _olm_account_buf: Vec<u8>,
-    // Pointer by which libolm aquires the data saved in an instance of OlmAccount
+    // Pointer by which libolm acquires the data saved in an instance of OlmAccount
     olm_account_ptr: *mut olm_sys::OlmAccount,
 }
 
 impl OlmAccount {
-    /// Creates a new instance of OlmAccount. During the instanciation the Ed25519 fingerprint key pair
+    /// Creates a new instance of OlmAccount. During the instantiation the Ed25519 fingerprint key pair
     /// and the Curve25519 identity key pair are generated. For more information see:
     /// https://matrix.org/docs/guides/e2e_implementation.html#keys-used-in-end-to-end-encryption
     pub fn new() -> Self {
@@ -162,6 +162,92 @@ impl OlmAccount {
     /// to bytes and then calls sign_bytes(), returning its output.
     pub fn sign_utf8_msg(&self, msg: &mut str) -> String {
         unsafe { self.sign_bytes(msg.as_bytes_mut()) }
+    }
+
+    /// Maximum number of one time keys that this OlmAccount can hold.
+    pub fn max_number_of_one_time_keys(&self) -> usize {
+        unsafe { olm_sys::olm_account_max_number_of_one_time_keys(self.olm_account_ptr) }
+    }
+
+    // Generates the supplied number of one time keys.
+    pub fn generate_one_time_keys(&mut self, number_of_keys: usize) {
+        let generate_error;
+        unsafe {
+            // Get correct length for the random buffer
+            let random_len = olm_sys::olm_account_generate_one_time_keys_random_length(
+                self.olm_account_ptr,
+                number_of_keys,
+            );
+
+            // Construct and populate random buffer
+            let mut random_buf: Vec<u8> = vec![0; random_len];
+            {
+                let rng = SystemRandom::new();
+                rng.fill(random_buf.as_mut_slice()).unwrap();
+            }
+            let random_ptr = random_buf.as_mut_ptr() as *mut _;
+
+            // Call function for generating one time keys
+            generate_error = olm_sys::olm_account_generate_one_time_keys(
+                self.olm_account_ptr,
+                number_of_keys,
+                random_ptr,
+                random_len,
+            );
+        }
+
+        if generate_error == errors::olm_error() {
+            match self.last_error() {
+                OlmAccountError::NotEnoughRandom => {
+                    panic!("Insufficient random data for generating one time keys for OlmAccount!")
+                }
+                _ => {
+                    panic!("Unknown error occurred, while generating one time keys for OlmAccount!")
+                }
+            }
+        }
+    }
+
+    // Gets the OlmAccount's one time keys formatted as JSON.
+    pub fn one_time_keys(&mut self) -> String {
+        let otks_result: String;
+        let otks_error;
+        unsafe {
+            // get buffer length of OTKs
+            let otks_len = olm_sys::olm_account_one_time_keys_length(self.olm_account_ptr);
+            let mut otks_buf: Vec<u8> = vec![0; otks_len];
+            let otks_ptr = otks_buf.as_mut_ptr() as *mut _;
+
+            // write OTKs data in the OTKs buffer
+            otks_error =
+                olm_sys::olm_account_one_time_keys(self.olm_account_ptr, otks_ptr, otks_len);
+
+            // To avoid a double memory free we have to forget about our buffer,
+            // since we are using the buffer's data to construct the final string below.
+            mem::forget(otks_buf);
+
+            // String is constructed from the OTKs buffer and memory is freed after exiting the scope.
+            // No memory should be leaked.
+            otks_result = String::from_raw_parts(otks_ptr as *mut u8, otks_len, otks_len);
+        }
+
+        if otks_error == errors::olm_error() {
+            match self.last_error() {
+                OlmAccountError::OutputBufferTooSmall => {
+                    panic!("Buffer for OlmAccount's one time keys is too small!")
+                }
+                _ => panic!("Unknown error occurred while getting OlmAccount's one time keys!"),
+            }
+        }
+
+        otks_result
+    }
+
+    // Mark the current set of keys as published.
+    pub fn mark_keys_as_published(&mut self) {
+        unsafe {
+            olm_sys::olm_account_mark_keys_as_published(self.olm_account_ptr);
+        }
     }
 }
 

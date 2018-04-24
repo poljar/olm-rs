@@ -65,3 +65,34 @@ fn signatures_valid() {
         olm_account.sign_utf8_msg(message.as_mut_str())
     )
 }
+
+#[test]
+fn one_time_keys_valid() {
+    let mut olm_account = OlmAccount::new();
+    let max_number_otks = olm_account.max_number_of_one_time_keys();
+    assert_eq!(100, max_number_otks);
+
+    // empty read of one time keys
+    let otks_empty = olm_account.one_time_keys();
+    let otks_empty_json = json::parse(&otks_empty).unwrap();
+    assert!(otks_empty_json["curve25519"].is_object());
+    assert!(otks_empty_json["curve25519"].is_empty());
+
+    olm_account.generate_one_time_keys(20);
+    let otks_filled = olm_account.one_time_keys();
+    let otks_filled_json = json::parse(&otks_filled).unwrap();
+    assert_eq!(20, otks_filled_json["curve25519"].len());
+    for entry in otks_filled_json["curve25519"].entries() {
+        assert_eq!(6, entry.0.len());
+        let key = entry.1.as_str().unwrap();
+        base64::decode(&key).unwrap();
+    }
+
+    olm_account.mark_keys_as_published();
+
+    // empty read of one time keys after marking as published
+    let otks_empty = olm_account.one_time_keys();
+    let otks_empty_json = json::parse(&otks_empty).unwrap();
+    assert!(otks_empty_json["curve25519"].is_object());
+    assert!(otks_empty_json["curve25519"].is_empty());
+}
