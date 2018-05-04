@@ -19,3 +19,32 @@ extern crate ring;
 
 pub mod account;
 mod errors;
+
+/// Used for storing the version number of libolm.
+/// Solely returned by [`get_library_version()`](fn.get_library_version.html).
+#[derive(Debug, PartialEq)]
+pub struct OlmVersion {
+    pub major: u8,
+    pub minor: u8,
+    pub patch: u8,
+}
+
+/// Returns the version number of the currently utilised `libolm`.
+pub fn get_library_version() -> OlmVersion {
+    let mut major = 0;
+    let mut minor = 0;
+    let mut patch = 0;
+    let major_ptr: *mut u8 = &mut major;
+    let minor_ptr: *mut u8 = &mut minor;
+    let patch_ptr: *mut u8 = &mut patch;
+
+    unsafe {
+        olm_sys::olm_get_library_version(major_ptr, minor_ptr, patch_ptr);
+    }
+
+    OlmVersion {
+        major: major,
+        minor: minor,
+        patch: patch,
+    }
+}
