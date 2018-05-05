@@ -19,6 +19,22 @@ extern crate json;
 extern crate olm_rs;
 
 use olm_rs::account::OlmAccount;
+use olm_rs::*;
+
+#[test]
+fn library_version_valid() {
+    let invalid_olm_version = OlmVersion {
+        major: 0,
+        minor: 0,
+        patch: 0,
+    };
+    let olm_version = olm_rs::get_library_version();
+    println!(
+        "Olm version: {}.{}.{}",
+        olm_version.major, olm_version.minor, olm_version.patch
+    );
+    assert_ne!(olm_version, invalid_olm_version);
+}
 
 #[test]
 fn identity_keys_valid() {
