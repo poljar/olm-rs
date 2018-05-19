@@ -31,8 +31,13 @@ pub struct OlmAccount {
 
 impl OlmAccount {
     /// Creates a new instance of OlmAccount. During the instantiation the Ed25519 fingerprint key pair
-    /// and the Curve25519 identity key pair are generated. For more information see:
-    /// https://matrix.org/docs/guides/e2e_implementation.html#keys-used-in-end-to-end-encryption
+    /// and the Curve25519 identity key pair are generated. For more information see
+    /// [here](https://matrix.org/docs/guides/e2e_implementation.html#keys-used-in-end-to-end-encryption).
+    ///
+    /// # Panics
+    ///
+    /// * `NOT_ENOUGH_RANDOM` for OlmAccount's creation
+    ///
     pub fn new() -> Self {
         let olm_account_ptr;
         let mut olm_account_buf: Vec<u8>;
@@ -66,6 +71,11 @@ impl OlmAccount {
     }
 
     /// Returns the account's public identity keys already formatted as JSON and BASE64.
+    ///
+    /// # Panics
+    ///
+    /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied identity keys buffer
+    ///
     pub fn identity_keys(&mut self) -> String {
         let identity_keys_result: String;
         let identity_keys_error;
@@ -123,6 +133,11 @@ impl OlmAccount {
     }
 
     /// Returns the signature of the supplied byte slice
+    ///
+    /// # Panics
+    ///
+    /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied signature buffer
+    ///
     pub fn sign_bytes(&self, input_buf: &mut [u8]) -> String {
         let signature_result;
         let signature_error;
@@ -169,7 +184,12 @@ impl OlmAccount {
         unsafe { olm_sys::olm_account_max_number_of_one_time_keys(self.olm_account_ptr) }
     }
 
-    // Generates the supplied number of one time keys.
+    /// Generates the supplied number of one time keys.
+    ///
+    /// # Panics
+    ///
+    /// * `NOT_ENOUGH_RANDOM` for the creation of one time keys
+    ///
     pub fn generate_one_time_keys(&mut self, number_of_keys: usize) {
         let generate_error;
         unsafe {
@@ -208,7 +228,12 @@ impl OlmAccount {
         }
     }
 
-    // Gets the OlmAccount's one time keys formatted as JSON.
+    /// Gets the OlmAccount's one time keys formatted as JSON.
+    ///
+    /// # Panics
+    ///
+    /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied one time keys buffer
+    ///
     pub fn one_time_keys(&mut self) -> String {
         let otks_result: String;
         let otks_error;
@@ -243,7 +268,7 @@ impl OlmAccount {
         otks_result
     }
 
-    // Mark the current set of keys as published.
+    /// Mark the current set of keys as published.
     pub fn mark_keys_as_published(&mut self) {
         unsafe {
             olm_sys::olm_account_mark_keys_as_published(self.olm_account_ptr);
