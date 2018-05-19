@@ -38,7 +38,7 @@ fn library_version_valid() {
 
 #[test]
 fn identity_keys_valid() {
-    let mut olm_account = OlmAccount::new();
+    let olm_account = OlmAccount::new();
     // verify length of entire JSON object
     let identity_keys = olm_account.identity_keys();
     assert_eq!(identity_keys.len(), 116);
@@ -56,8 +56,8 @@ fn identity_keys_valid() {
 #[test]
 fn operational_rng() {
     // Check that generated keys aren't the same
-    let mut olm_account = OlmAccount::new();
-    let mut olm_account2 = OlmAccount::new();
+    let olm_account = OlmAccount::new();
+    let olm_account2 = OlmAccount::new();
     let identity_keys = olm_account.identity_keys();
     let identity_keys2 = olm_account2.identity_keys();
     assert_ne!(identity_keys, identity_keys2);
