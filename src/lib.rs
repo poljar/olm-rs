@@ -14,6 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+//! This is a wrapper for `libolm`. It exposes all original functionality,
+//! split into task oriented modules.
+//!
+//! This wrapper takes care of memory allocation for you, so all functions
+//! in the original library exposing the buffer length of certain read/write
+//! buffers (and similar functionality) are not included in this wrapper,
+//! because they are used internally.
+//!
+//! Random number generation is also handled internally and hence there are no
+//! function arguments for supplying random data.
+//!
+//! All errors from `libolm` that are encountered result in a panic,
+//! because they are unrecoverably fatal.
+//! In case a function can panic, it is annotated as such in the documentation.
+//! Panics should technically never happen however.
 extern crate olm_sys;
 extern crate ring;
 
@@ -30,6 +45,9 @@ pub struct OlmVersion {
 }
 
 /// Returns the version number of the currently utilised `libolm`.
+///
+/// # C-API equivalent
+/// `olm_get_library_version`
 pub fn get_library_version() -> OlmVersion {
     let mut major = 0;
     let mut minor = 0;
