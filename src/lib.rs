@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-//! This is a wrapper for `libolm`. It exposes all original functionality,
-//! split into task oriented modules.
+//! This is a wrapper for [`libolm`](https://git.matrix.org/git/olm/about/).
+//! It exposes all original functionality, split into task oriented modules.
 //!
 //! This wrapper takes care of memory allocation for you, so all functions
 //! in the original library exposing the buffer length of certain read/write
