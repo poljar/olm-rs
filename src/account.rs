@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+//! This module wraps around all functions following the pattern `olm_account_*`.
+
 use errors;
 use errors::OlmAccountError;
 use olm_sys;
@@ -22,6 +24,15 @@ use std::ffi::CStr;
 use std::mem;
 
 /// An olm account manages all cryptographic keys used on a device.
+///
+/// OlmAccount follows the *Constructor* design pattern, so it has to be
+/// instantiated before further usage.
+/// ```
+/// use olm_rs::account::OlmAccount;
+///
+/// let mut olm_account = OlmAccount::new(); // Constructor
+/// println!("{}", olm_account.identity_keys());
+/// ```
 pub struct OlmAccount {
     // Reserved memory buffer holding data of an OlmAccount for libolm
     _olm_account_buf: Vec<u8>,
@@ -31,8 +42,15 @@ pub struct OlmAccount {
 
 impl OlmAccount {
     /// Creates a new instance of OlmAccount. During the instantiation the Ed25519 fingerprint key pair
-    /// and the Curve25519 identity key pair are generated. For more information see:
-    /// https://matrix.org/docs/guides/e2e_implementation.html#keys-used-in-end-to-end-encryption
+    /// and the Curve25519 identity key pair are generated. For more information see
+    /// [here](https://matrix.org/docs/guides/e2e_implementation.html#keys-used-in-end-to-end-encryption).
+    ///
+    /// # C-API equivalent
+    /// `olm_create_account`
+    ///
+    /// # Panics
+    /// * `NOT_ENOUGH_RANDOM` for OlmAccount's creation
+    ///
     pub fn new() -> Self {
         let olm_account_ptr;
         let mut olm_account_buf: Vec<u8>;
@@ -66,7 +84,14 @@ impl OlmAccount {
     }
 
     /// Returns the account's public identity keys already formatted as JSON and BASE64.
-    pub fn identity_keys(&mut self) -> String {
+    ///
+    /// # C-API equivalent
+    /// `olm_account_identity_keys`
+    ///
+    /// # Panics
+    /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied identity keys buffer
+    ///
+    pub fn identity_keys(&self) -> String {
         let identity_keys_result: String;
         let identity_keys_error;
         unsafe {
@@ -122,7 +147,14 @@ impl OlmAccount {
         }
     }
 
-    /// Returns the signature of the supplied byte slice
+    /// Returns the signature of the supplied byte slice.
+    ///
+    /// # C-API equivalent
+    /// `olm_account_sign`
+    ///
+    /// # Panics
+    /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied signature buffer
+    ///
     pub fn sign_bytes(&self, input_buf: &mut [u8]) -> String {
         let signature_result;
         let signature_error;
@@ -159,17 +191,28 @@ impl OlmAccount {
     }
 
     /// Convenience function that converts the UTF-8 message
-    /// to bytes and then calls sign_bytes(), returning its output.
+    /// to bytes and then calls `sign_bytes()`, returning its output.
     pub fn sign_utf8_msg(&self, msg: &mut str) -> String {
         unsafe { self.sign_bytes(msg.as_bytes_mut()) }
     }
 
-    /// Maximum number of one time keys that this OlmAccount can hold.
+    /// Maximum number of one time keys that this OlmAccount can currently hold.
+    ///
+    /// # C-API equivalent
+    /// `olm_account_max_number_of_one_time_keys`
+    ///
     pub fn max_number_of_one_time_keys(&self) -> usize {
         unsafe { olm_sys::olm_account_max_number_of_one_time_keys(self.olm_account_ptr) }
     }
 
-    // Generates the supplied number of one time keys.
+    /// Generates the supplied number of one time keys.
+    ///
+    /// # C-API equivalent
+    /// `olm_account_generate_one_time_keys`
+    ///
+    /// # Panics
+    /// * `NOT_ENOUGH_RANDOM` for the creation of one time keys
+    ///
     pub fn generate_one_time_keys(&mut self, number_of_keys: usize) {
         let generate_error;
         unsafe {
@@ -208,7 +251,14 @@ impl OlmAccount {
         }
     }
 
-    // Gets the OlmAccount's one time keys formatted as JSON.
+    /// Gets the OlmAccount's one time keys formatted as JSON.
+    ///
+    /// # C-API equivalent
+    /// `olm_account_one_time_keys`
+    ///
+    /// # Panics
+    /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied one time keys buffer
+    ///
     pub fn one_time_keys(&mut self) -> String {
         let otks_result: String;
         let otks_error;
@@ -243,7 +293,11 @@ impl OlmAccount {
         otks_result
     }
 
-    // Mark the current set of keys as published.
+    /// Mark the current set of keys as published.
+    ///
+    /// # C-API equivalent
+    /// `olm_account_mark_keys_as_published`
+    ///
     pub fn mark_keys_as_published(&mut self) {
         unsafe {
             olm_sys::olm_account_mark_keys_as_published(self.olm_account_ptr);
