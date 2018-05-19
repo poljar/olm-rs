@@ -24,6 +24,15 @@ use std::ffi::CStr;
 use std::mem;
 
 /// An olm account manages all cryptographic keys used on a device.
+///
+/// OlmAccount follows the *Constructor* design pattern, so it has to be
+/// instantiated before further usage.
+/// ```
+/// use olm_rs::account::OlmAccount;
+///
+/// let mut olm_account = OlmAccount::new(); // Constructor
+/// println!("{}", olm_account.identity_keys());
+/// ```
 pub struct OlmAccount {
     // Reserved memory buffer holding data of an OlmAccount for libolm
     _olm_account_buf: Vec<u8>,
@@ -82,7 +91,7 @@ impl OlmAccount {
     /// # Panics
     /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied identity keys buffer
     ///
-    pub fn identity_keys(&mut self) -> String {
+    pub fn identity_keys(&self) -> String {
         let identity_keys_result: String;
         let identity_keys_error;
         unsafe {
