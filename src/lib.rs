@@ -33,6 +33,7 @@ extern crate olm_sys;
 extern crate ring;
 
 pub mod account;
+pub mod utility;
 mod errors;
 
 /// Used for storing the version number of libolm.

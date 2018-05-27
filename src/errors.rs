@@ -34,3 +34,11 @@ pub enum OlmAccountError {
     OutputBufferTooSmall,
     Unknown,
 }
+
+
+pub enum OlmUtilityError {
+    InvalidBase64,
+    OutputBufferTooSmall,
+    BadMessageMac,
+    Unknown,
+}

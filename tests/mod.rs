@@ -19,6 +19,7 @@ extern crate json;
 extern crate olm_rs;
 
 use olm_rs::account::OlmAccount;
+use olm_rs::utility::OlmUtility;
 use olm_rs::*;
 
 #[test]
@@ -111,4 +112,16 @@ fn one_time_keys_valid() {
     let otks_empty_json = json::parse(&otks_empty).unwrap();
     assert!(otks_empty_json["curve25519"].is_object());
     assert!(otks_empty_json["curve25519"].is_empty());
+}
+
+#[test]
+fn sha256_valid() {
+    let mut test_str = String::from("Hello, World!");
+    let util = OlmUtility::new();
+    let mut test_str_same = String::from("Hello, World!");
+    let test_str_bytes = unsafe { test_str_same.as_bytes_mut() };
+
+    assert_eq!(
+        util.sha256_utf8_msg(&mut test_str),
+        util.sha256_bytes(test_str_bytes))
 }
