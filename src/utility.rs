@@ -19,7 +19,6 @@
 use errors;
 use errors::OlmUtilityError;
 use olm_sys;
-// use ring::rand::{SecureRandom, SystemRandom};
 use std::ffi::CStr;
 use std::mem;
 
@@ -89,21 +88,18 @@ impl OlmUtility {
                 input_ptr,
                 input_buf.len(),
                 output_ptr,
-                output_len
+                output_len,
             );
 
             mem::forget(output_buf);
 
-            sha256_result = String::from_raw_parts(output_ptr as *mut u8,
-                output_len, output_len)
+            sha256_result = String::from_raw_parts(output_ptr as *mut u8, output_len, output_len)
         }
 
         // Errors from sha256 are fatal
         if sha256_error == errors::olm_error() {
             match self.last_error() {
-                OlmUtilityError::OutputBufferTooSmall => {
-                    panic!("Buffer for sha256 is too small!")
-                }
+                OlmUtilityError::OutputBufferTooSmall => panic!("Buffer for sha256 is too small!"),
                 _ => panic!("Unknown error occured while creating sha256"),
             }
         }
@@ -122,23 +118,29 @@ impl OlmUtility {
     /// # C-API equivalent
     /// `olm_ed25519_verify`
     ///
-    pub fn ed25519_verify_bytes(&self,
-                            key_buf: &mut [u8],
-                            message_buf: &mut [u8],
-                            signature_buf: &mut [u8]) -> Result<bool,OlmUtilityError> {
+    pub fn ed25519_verify_bytes(
+        &self,
+        key: &mut str,
+        data_buf: &mut [u8],
+        signature: &mut str,
+    ) -> Result<bool, OlmUtilityError> {
         let ed25519_verify_result: usize;
         let ed25519_verify_error: usize;
+
         unsafe {
+            let key_buf = key.as_bytes_mut();
+            let signature_buf = signature.as_bytes_mut();
+
             let key_ptr = key_buf.as_mut_ptr() as *mut _;
-            let message_ptr = message_buf.as_mut_ptr() as *mut _;
+            let data_ptr = data_buf.as_mut_ptr() as *mut _;
             let signature_ptr = signature_buf.as_mut_ptr() as *mut _;
 
             ed25519_verify_error = olm_sys::olm_ed25519_verify(
                 self.olm_utility_ptr,
                 key_ptr,
                 key_buf.len(),
-                message_ptr,
-                message_buf.len(),
+                data_ptr,
+                data_buf.len(),
                 signature_ptr,
                 signature_buf.len(),
             );
@@ -159,17 +161,13 @@ impl OlmUtility {
 
     /// Convenience function that converts the UTF-8 message
     /// to bytes and calls `ed25519_verify_bytes()`, returning its output
-    pub fn ed25519_verify_utf8_msg(&self,
-                        key: &mut str,
-                        message: &mut str,
-                        signature: &mut str) -> Result<bool,OlmUtilityError> {
-        unsafe {
-            self.ed25519_verify_bytes(
-                key.as_bytes_mut(),
-                message.as_bytes_mut(),
-                signature.as_bytes_mut()
-            )
-        }
+    pub fn ed25519_verify_utf8_msg(
+        &self,
+        key: &mut str,
+        message: &mut str,
+        signature: &mut str,
+    ) -> Result<bool, OlmUtilityError> {
+        unsafe { self.ed25519_verify_bytes(key, message.as_bytes_mut(), signature) }
     }
 }
 
