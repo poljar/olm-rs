@@ -19,6 +19,7 @@ extern crate json;
 extern crate olm_rs;
 
 use olm_rs::account::OlmAccount;
+use olm_rs::errors::OlmAccountError;
 use olm_rs::utility::OlmUtility;
 use olm_rs::*;
 
@@ -123,5 +124,20 @@ fn sha256_valid() {
 
     assert_eq!(
         util.sha256_utf8_msg(&mut test_str),
-        util.sha256_bytes(test_str_bytes))
+        util.sha256_bytes(test_str_bytes)
+    )
+}
+
+#[test]
+fn pickling_fails_on_wrong_key() {
+    let mut pickled;
+    {
+        let mut olm_account = OlmAccount::new();
+        pickled = olm_account.pickle(&[3, 2, 1]);
+    }
+    // wrong key
+    let olm_account_bad = OlmAccount::unpickle(&mut pickled, &[1, 2, 3]);
+
+    assert!(olm_account_bad.is_err());
+    assert_eq!(olm_account_bad.err(), Some(OlmAccountError::BadAccountKey));
 }
