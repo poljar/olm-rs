@@ -83,6 +83,118 @@ impl OlmAccount {
         }
     }
 
+    /// Serialises an `OlmAccount` to encrypted Base64. The encryption key is free to choose
+    /// (empty byte slice is allowed).
+    ///
+    /// # C-API equivalent
+    /// `olm_pickle_account`
+    ///
+    /// # Example
+    /// ```
+    /// use olm_rs::account::OlmAccount;
+    ///
+    /// let identity_keys;
+    /// let mut pickled;
+    /// {
+    ///     let mut olm_account = OlmAccount::new();
+    ///     identity_keys = olm_account.identity_keys();
+    ///     pickled = olm_account.pickle(&[]);
+    /// }
+    /// let olm_account_2 = OlmAccount::unpickle(&mut pickled, &[]).unwrap();
+    /// let identity_keys_2 = olm_account_2.identity_keys();
+    ///
+    /// assert_eq!(identity_keys, identity_keys_2);
+    /// ```
+    ///
+    /// # Panics
+    /// * `OUTPUT_BUFFER_TOO_SMALL` for OlmAccount's pickled buffer
+    ///
+    pub fn pickle(&mut self, key: &[u8]) -> String {
+        let pickled_result;
+        let pickle_error;
+
+        unsafe {
+            let mut pickled_buf = vec![0; olm_sys::olm_pickle_account_length(self.olm_account_ptr)];
+            let pickled_len = pickled_buf.len();
+            let pickled_ptr = pickled_buf.as_mut_ptr() as *mut _;
+
+            pickle_error = olm_sys::olm_pickle_account(
+                self.olm_account_ptr,
+                key.as_ptr() as *const _,
+                key.len(),
+                pickled_ptr,
+                pickled_len,
+            );
+
+            mem::forget(pickled_buf);
+
+            pickled_result =
+                String::from_raw_parts(pickled_ptr as *mut u8, pickled_len, pickled_len);
+        }
+
+        if pickle_error == errors::olm_error() {
+            match self.last_error() {
+                OlmAccountError::OutputBufferTooSmall => {
+                    panic!("Buffer for pickled OlmAccount is too small!")
+                }
+                _ => panic!("Unknown error occurred while pickling OlmAccount!"),
+            }
+        } else {
+            pickled_result
+        }
+    }
+
+    /// Deserialises from encrypted Base64 that was previously obtained by pickling an `OlmAccount`.
+    ///
+    /// # C-API equivalent
+    /// `olm_unpickle_account`
+    ///
+    /// # Errors
+    /// * `BadAccountKey` if the key doesn't match the one the account was encrypted with
+    /// * `InvalidBase64` if decoding the supplied `pickled` string slice fails
+    ///
+    pub fn unpickle(pickled: &mut str, key: &[u8]) -> Result<Self, OlmAccountError> {
+        let olm_account_ptr;
+        let mut olm_account_buf: Vec<u8>;
+        let unpickle_error;
+
+        unsafe {
+            let pickled_len = pickled.len();
+            let pickled_buf = pickled.as_bytes_mut();
+
+            olm_account_buf = vec![0; olm_sys::olm_account_size()];
+            olm_account_ptr = olm_sys::olm_account(olm_account_buf.as_mut_ptr() as *mut _);
+
+            unpickle_error = olm_sys::olm_unpickle_account(
+                olm_account_ptr,
+                key.as_ptr() as *const _,
+                key.len(),
+                pickled_buf.as_mut_ptr() as *mut _,
+                pickled_len,
+            );
+        }
+
+        if unpickle_error == errors::olm_error() {
+            let error;
+            // get CString error code and convert to String
+            unsafe {
+                let error_raw = olm_sys::olm_account_last_error(olm_account_ptr);
+                error = CStr::from_ptr(error_raw).to_str().unwrap();
+            }
+
+            match error {
+                "BAD_ACCOUNT_KEY" => Err(OlmAccountError::BadAccountKey),
+                "INVALID_BASE64" => Err(OlmAccountError::InvalidBase64),
+                _ => Err(OlmAccountError::Unknown),
+            }
+        } else {
+            Ok(OlmAccount {
+                _olm_account_buf: olm_account_buf,
+                olm_account_ptr: olm_account_ptr,
+            })
+        }
+    }
+
     /// Returns the account's public identity keys already formatted as JSON and BASE64.
     ///
     /// # C-API equivalent

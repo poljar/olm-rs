@@ -33,8 +33,8 @@ extern crate olm_sys;
 extern crate ring;
 
 pub mod account;
+pub mod errors;
 pub mod utility;
-mod errors;
 
 /// Used for storing the version number of libolm.
 /// Solely returned by [`get_library_version()`](fn.get_library_version.html).
