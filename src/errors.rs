@@ -26,6 +26,7 @@ pub fn olm_error() -> usize {
 
 /// All errors that could be caused by an operation regarding an OlmAccount.
 /// Errors are named exactly like the ones in libolm.
+#[derive(Debug, PartialEq)]
 pub enum OlmAccountError {
     BadAccountKey,
     BadMessageKeyId,
@@ -34,7 +35,6 @@ pub enum OlmAccountError {
     OutputBufferTooSmall,
     Unknown,
 }
-
 
 pub enum OlmUtilityError {
     InvalidBase64,
