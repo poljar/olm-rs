@@ -42,3 +42,16 @@ pub enum OlmUtilityError {
     BadMessageMac,
     Unknown,
 }
+
+#[derive(Debug, PartialEq)]
+pub enum OlmSessionError {
+    BadAccountKey,
+    BadMessageFormat,
+    BadMessageKeyId,
+    BadMessageMac,
+    BadMessageVersion,
+    InvalidBase64,
+    NotEnoughRandom,
+    OutputBufferTooSmall,
+    Unknown,
+}

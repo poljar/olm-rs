@@ -34,6 +34,7 @@ extern crate ring;
 
 pub mod account;
 pub mod errors;
+pub mod session;
 pub mod utility;
 
 /// Used for storing the version number of libolm.

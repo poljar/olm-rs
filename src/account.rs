@@ -20,6 +20,7 @@ use errors;
 use errors::OlmAccountError;
 use olm_sys;
 use ring::rand::{SecureRandom, SystemRandom};
+use session::OlmSession;
 use std::ffi::CStr;
 use std::mem;
 
@@ -37,7 +38,7 @@ pub struct OlmAccount {
     // Reserved memory buffer holding data of an OlmAccount for libolm
     _olm_account_buf: Vec<u8>,
     // Pointer by which libolm acquires the data saved in an instance of OlmAccount
-    olm_account_ptr: *mut olm_sys::OlmAccount,
+    pub olm_account_ptr: *mut olm_sys::OlmAccount,
 }
 
 impl OlmAccount {
@@ -253,6 +254,7 @@ impl OlmAccount {
         }
 
         match error {
+            "BAD_MESSAGE_KEY_ID" => OlmAccountError::BadMessageKeyId,
             "NOT_ENOUGH_RANDOM" => OlmAccountError::NotEnoughRandom,
             "OUTPUT_BUFFER_TOO_SMALL" => OlmAccountError::OutputBufferTooSmall,
             _ => OlmAccountError::Unknown,
@@ -405,7 +407,7 @@ impl OlmAccount {
         otks_result
     }
 
-    /// Mark the current set of keys as published.
+    /// Mark the current set of one time keys as published.
     ///
     /// # C-API equivalent
     /// `olm_account_mark_keys_as_published`
@@ -413,6 +415,31 @@ impl OlmAccount {
     pub fn mark_keys_as_published(&mut self) {
         unsafe {
             olm_sys::olm_account_mark_keys_as_published(self.olm_account_ptr);
+        }
+    }
+
+    /// Remove the one time key used to create the supplied session.
+    ///
+    /// # C-API equivalent
+    /// `olm_remove_one_time_keys`
+    ///
+    /// # Errors
+    /// * `BAD_MESSAGE_KEY_ID` when the account doesn't hold a matching one time key
+    ///
+    pub fn remove_one_time_keys(
+        &mut self,
+        session: &mut OlmSession,
+    ) -> Result<(), OlmAccountError> {
+        let remove_error;
+        unsafe {
+            remove_error =
+                olm_sys::olm_remove_one_time_keys(self.olm_account_ptr, session.olm_session_ptr);
+        }
+
+        if remove_error == errors::olm_error() {
+            Err(self.last_error())
+        } else {
+            Ok(())
         }
     }
 }
