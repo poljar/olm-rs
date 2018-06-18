@@ -46,31 +46,15 @@ impl OlmSession {
         account: &mut OlmAccount,
         one_time_key_message: &mut str,
     ) -> Result<Self, OlmSessionError> {
-        let olm_session_ptr;
-        let mut olm_session_buf: Vec<u8>;
-        let create_error;
-
-        unsafe {
+        Self::create_session_with(|olm_session_ptr| unsafe {
             let one_time_key_message_buf = one_time_key_message.as_bytes_mut();
-            olm_session_buf = vec![0; olm_sys::olm_session_size()];
-            olm_session_ptr = olm_sys::olm_session(olm_session_buf.as_mut_ptr() as *mut _);
-
-            create_error = olm_sys::olm_create_inbound_session(
+            olm_sys::olm_create_inbound_session(
                 olm_session_ptr,
                 account.olm_account_ptr,
                 one_time_key_message_buf.as_mut_ptr() as *mut _,
                 one_time_key_message_buf.len(),
-            );
-        }
-
-        if create_error == errors::olm_error() {
-            Err(Self::last_error(olm_session_ptr))
-        } else {
-            Ok(OlmSession {
-                _olm_session_buf: olm_session_buf,
-                olm_session_ptr: olm_session_ptr,
-            })
-        }
+            )
+        })
     }
 
     /// Creates an inbound session for sending/receiving messages from a received 'prekey' message.
@@ -89,34 +73,20 @@ impl OlmSession {
         their_identity_key: &str,
         one_time_key_message: &mut str,
     ) -> Result<Self, OlmSessionError> {
-        let olm_session_ptr;
-        let mut olm_session_buf: Vec<u8>;
-        let create_error;
-
-        unsafe {
+        Self::create_session_with(|olm_session_ptr| {
             let their_identity_key_buf = their_identity_key.as_bytes();
-            let one_time_key_message_buf = one_time_key_message.as_bytes_mut();
-            olm_session_buf = vec![0; olm_sys::olm_session_size()];
-            olm_session_ptr = olm_sys::olm_session(olm_session_buf.as_mut_ptr() as *mut _);
-
-            create_error = olm_sys::olm_create_inbound_session_from(
-                olm_session_ptr,
-                account.olm_account_ptr,
-                their_identity_key_buf.as_ptr() as *const _,
-                their_identity_key_buf.len(),
-                one_time_key_message_buf.as_mut_ptr() as *mut _,
-                one_time_key_message_buf.len(),
-            );
-        }
-
-        if create_error == errors::olm_error() {
-            Err(Self::last_error(olm_session_ptr))
-        } else {
-            Ok(OlmSession {
-                _olm_session_buf: olm_session_buf,
-                olm_session_ptr: olm_session_ptr,
-            })
-        }
+            unsafe {
+                let one_time_key_message_buf = one_time_key_message.as_bytes_mut();
+                olm_sys::olm_create_inbound_session_from(
+                    olm_session_ptr,
+                    account.olm_account_ptr,
+                    their_identity_key_buf.as_ptr() as *const _,
+                    their_identity_key_buf.len(),
+                    one_time_key_message_buf.as_mut_ptr() as *mut _,
+                    one_time_key_message_buf.len(),
+                )
+            }
+        })
     }
 
     /// Creates an outbound session for sending messages to a specific
@@ -136,36 +106,45 @@ impl OlmSession {
         their_identity_key: &str,
         their_one_time_key: &str,
     ) -> Result<Self, OlmSessionError> {
-        let olm_session_ptr;
-        let mut olm_session_buf: Vec<u8>;
-        let create_error;
-        let their_identity_key_buf = their_identity_key.as_bytes();
-        let their_one_time_key_buf = their_one_time_key.as_bytes();
+        Self::create_session_with(|olm_session_ptr| {
+            let their_identity_key_buf = their_identity_key.as_bytes();
+            let their_one_time_key_buf = their_one_time_key.as_bytes();
+            unsafe {
+                let random_len =
+                    olm_sys::olm_create_outbound_session_random_length(olm_session_ptr);
+                let mut random_buf: Vec<u8> = vec![0; random_len];
+                {
+                    let rng = SystemRandom::new();
+                    rng.fill(random_buf.as_mut_slice()).unwrap();
+                }
 
+                olm_sys::olm_create_outbound_session(
+                    olm_session_ptr,
+                    account.olm_account_ptr,
+                    their_identity_key_buf.as_ptr() as *const _,
+                    their_identity_key_buf.len(),
+                    their_one_time_key_buf.as_ptr() as *const _,
+                    their_one_time_key_buf.len(),
+                    random_buf.as_mut_ptr() as *mut _,
+                    random_buf.len(),
+                )
+            }
+        })
+    }
+
+    /// Helper function for creating new sessions and handling errors.
+    fn create_session_with<F: FnMut(*mut olm_sys::OlmSession) -> usize>(
+        mut f: F,
+    ) -> Result<OlmSession, OlmSessionError> {
+        let olm_session_ptr;
+        let mut olm_session_buf;
+        let error;
         unsafe {
             olm_session_buf = vec![0; olm_sys::olm_session_size()];
             olm_session_ptr = olm_sys::olm_session(olm_session_buf.as_mut_ptr() as *mut _);
-
-            let random_len = olm_sys::olm_create_outbound_session_random_length(olm_session_ptr);
-            let mut random_buf: Vec<u8> = vec![0; random_len];
-            {
-                let rng = SystemRandom::new();
-                rng.fill(random_buf.as_mut_slice()).unwrap();
-            }
-
-            create_error = olm_sys::olm_create_outbound_session(
-                olm_session_ptr,
-                account.olm_account_ptr,
-                their_identity_key_buf.as_ptr() as *const _,
-                their_identity_key_buf.len(),
-                their_one_time_key_buf.as_ptr() as *const _,
-                their_one_time_key_buf.len(),
-                random_buf.as_mut_ptr() as *mut _,
-                random_buf.len(),
-            );
+            error = f(olm_session_ptr);
         }
-
-        if create_error == errors::olm_error() {
+        if error == errors::olm_error() {
             if Self::last_error(olm_session_ptr) == OlmSessionError::NotEnoughRandom {
                 panic!("Not enough random data supplied for creation of outbound session!");
             }
@@ -291,34 +270,18 @@ impl OlmSession {
     /// * `InvalidBase64` if decoding the supplied `pickled` string slice fails
     ///
     pub fn unpickle(pickled: &mut str, key: &[u8]) -> Result<Self, OlmSessionError> {
-        let olm_session_ptr;
-        let mut olm_session_buf: Vec<u8>;
-        let unpickle_error;
-
-        unsafe {
+        Self::create_session_with(|olm_session_ptr| unsafe {
             let pickled_len = pickled.len();
             let pickled_buf = pickled.as_bytes_mut();
 
-            olm_session_buf = vec![0; olm_sys::olm_session_size()];
-            olm_session_ptr = olm_sys::olm_session(olm_session_buf.as_mut_ptr() as *mut _);
-
-            unpickle_error = olm_sys::olm_unpickle_session(
+            olm_sys::olm_unpickle_session(
                 olm_session_ptr,
                 key.as_ptr() as *const _,
                 key.len(),
                 pickled_buf.as_mut_ptr() as *mut _,
                 pickled_len,
-            );
-        }
-
-        if unpickle_error == errors::olm_error() {
-            Err(Self::last_error(olm_session_ptr))
-        } else {
-            Ok(OlmSession {
-                _olm_session_buf: olm_session_buf,
-                olm_session_ptr: olm_session_ptr,
-            })
-        }
+            )
+        })
     }
 
     /// Encrypts a plaintext message using the session.
