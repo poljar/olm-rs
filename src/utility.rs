@@ -27,6 +27,8 @@ pub struct OlmUtility {
     olm_utility_ptr: *mut olm_sys::OlmUtility,
 }
 
+/// Allows you to make use of crytographic hashing via SHA-2 and
+/// verifying ed25519 signatures.
 impl OlmUtility {
     /// Creates a new instance of OlmUtility.
     ///

@@ -14,6 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+//! A collection of all errors that can be returned by `libolm`.
+//!
+//! All error enums additionally contain an error named `Unknown`,
+//! for returning an error, in case an error is encountered by `libolm`,
+//! but no error code is provided.
+
 use olm_sys;
 
 pub fn olm_error() -> usize {
@@ -24,7 +30,7 @@ pub fn olm_error() -> usize {
     result
 }
 
-/// All errors that could be caused by an operation regarding an OlmAccount.
+/// All errors that could be caused by an operation regarding an `OlmAccount`.
 /// Errors are named exactly like the ones in libolm.
 #[derive(Debug, PartialEq)]
 pub enum OlmAccountError {
@@ -36,6 +42,9 @@ pub enum OlmAccountError {
     Unknown,
 }
 
+/// All errors that could be caused by an operation regarding `OlmUitlity`.
+/// Errors are named exactly like the ones in libolm.
+#[derive(Debug, PartialEq)]
 pub enum OlmUtilityError {
     InvalidBase64,
     OutputBufferTooSmall,
@@ -43,6 +52,8 @@ pub enum OlmUtilityError {
     Unknown,
 }
 
+/// All errors that could be caused by an operation regarding an `OlmSession`.
+/// Errors are named exactly like the ones in libolm.
 #[derive(Debug, PartialEq)]
 pub enum OlmSessionError {
     BadAccountKey,

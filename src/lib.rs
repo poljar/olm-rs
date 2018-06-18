@@ -19,16 +19,17 @@
 //!
 //! This wrapper takes care of memory allocation for you, so all functions
 //! in the original library exposing the buffer length of certain read/write
-//! buffers (and similar functionality) are not included in this wrapper,
-//! because they are used internally.
+//! buffers (and similar functionality) are not exposed by this wrapper.
 //!
 //! Random number generation is also handled internally and hence there are no
 //! function arguments for supplying random data.
 //!
-//! All errors from `libolm` that are encountered result in a panic,
-//! because they are unrecoverably fatal.
+//! All errors of the type `NOT_ENOUGH_RANDOM` and `OUTPUT_BUFFER_TOO_SMALL` from
+//! `libolm` that are encountered result in a panic, as they are unrecoverably fatal.
 //! In case a function can panic, it is annotated as such in the documentation.
-//! Panics should technically never happen however.
+//!
+//! *Panics should technically never happen however.*
+
 extern crate olm_sys;
 extern crate ring;
 

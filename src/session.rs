@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-//! This module wraps around all functions following the pattern `olm_session_*`, as well as functions for encryption and decryption.
+//! This module wraps around all functions following the pattern `olm_session_*`,
+//! as well as functions for encryption and decryption using the Double Ratchet algorithm.
 
 use account::OlmAccount;
 use errors;
@@ -24,7 +25,7 @@ use ring::rand::{SecureRandom, SystemRandom};
 use std::ffi::CStr;
 use std::mem;
 
-/// Either an outbound or inbound session.
+/// Either an outbound or inbound session for secure communication.
 pub struct OlmSession {
     _olm_session_buf: Vec<u8>,
     pub olm_session_ptr: *mut olm_sys::OlmSession,
