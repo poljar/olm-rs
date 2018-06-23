@@ -359,22 +359,25 @@ impl OlmSession {
     /// * `OutputBufferTooSmall` on plaintext output buffer
     ///
     pub fn decrypt(
-        &mut self,
+        &self,
         message_type: OlmMessageType,
-        message: &mut str,
+        mut message: String,
     ) -> Result<String, OlmSessionError> {
         let decrypt_error;
         let plaintext_result;
         let plaintext_result_len;
 
-        unsafe {
-            // get the usize value associated with the supplied message type
-            let message_type_val = match message_type {
-                OlmMessageType::PreKey => olm_sys::OLM_MESSAGE_TYPE_PRE_KEY,
-                _ => olm_sys::OLM_MESSAGE_TYPE_MESSAGE,
-            };
+        // get the usize value associated with the supplied message type
+        let message_type_val = match message_type {
+            OlmMessageType::PreKey => olm_sys::OLM_MESSAGE_TYPE_PRE_KEY,
+            _ => olm_sys::OLM_MESSAGE_TYPE_MESSAGE,
+        };
 
-            let message_buf = message.as_bytes_mut();
+        // We need to clone the message because
+        // olm_decrypt_max_plaintext_length destroys the input buffer
+        let mut message_for_len = message.clone();
+        unsafe {
+            let message_buf = message_for_len.as_bytes_mut();
             let message_len = message_buf.len();
             let message_ptr = message_buf.as_mut_ptr() as *mut _;
 
@@ -384,9 +387,16 @@ impl OlmSession {
                 message_ptr,
                 message_len,
             );
+            if plaintext_max_len == errors::olm_error() {
+                return Err(Self::last_error(self.olm_session_ptr));
+            }
 
             let mut plaintext_buf: Vec<u8> = vec![0; plaintext_max_len];
             let plaintext_ptr = plaintext_buf.as_mut_ptr() as *mut _;
+
+            let message_buf = message.as_bytes_mut();
+            let message_len = message_buf.len();
+            let message_ptr = message_buf.as_mut_ptr() as *mut _;
 
             plaintext_result_len = olm_sys::olm_decrypt(
                 self.olm_session_ptr,
@@ -398,6 +408,12 @@ impl OlmSession {
             );
 
             decrypt_error = plaintext_result_len;
+            if decrypt_error == errors::olm_error() {
+                if Self::last_error(self.olm_session_ptr) == OlmSessionError::OutputBufferTooSmall {
+                    panic!("Output buffer for plaintext is too small when decrypting!");
+                }
+                return Err(Self::last_error(self.olm_session_ptr));
+            }
 
             mem::forget(plaintext_buf);
 
@@ -407,15 +423,7 @@ impl OlmSession {
                 plaintext_result_len,
             );
         }
-
-        if decrypt_error == errors::olm_error() {
-            if Self::last_error(self.olm_session_ptr) == OlmSessionError::OutputBufferTooSmall {
-                panic!("Output buffer for plaintext is too small when decrypting!");
-            }
-            Err(Self::last_error(self.olm_session_ptr))
-        } else {
-            Ok(plaintext_result)
-        }
+        Ok(plaintext_result)
     }
 
     /// The type of the next message that will be returned from encryption.
@@ -427,7 +435,7 @@ impl OlmSession {
     /// Can apperently encounter a fatal error, but the documentation does not specifiy
     /// what kind of error.
     ///
-    pub fn encrypt_message_type(&mut self) -> OlmMessageType {
+    pub fn encrypt_message_type(&self) -> OlmMessageType {
         let message_type_result;
         let message_type_error;
 
