@@ -463,6 +463,91 @@ impl OlmSession {
         // to get the bool value of an int_c type, check for inequality with zero
         received_message != 0
     }
+
+    /// Checks if the 'prekey' message is for this in-bound session.
+    ///
+    /// # C-API equivalent
+    /// `olm_matches_inbound_session`
+    ///
+    /// # Errors
+    /// * `InvalidBase64` for failing to decode base64 in `one_time_key_message`
+    /// * `BadMessageVersion` for message from unsupported protocol version
+    /// * `BadMessageFormat` for failing to decode `one_time_key_message`
+    ///
+    pub fn matches_inbound_session(
+        &mut self,
+        one_time_key_message: &mut str,
+    ) -> Result<bool, OlmSessionError> {
+        let matches_result;
+        let matches_error;
+
+        unsafe {
+            let one_time_key_message_buf = one_time_key_message.as_bytes_mut();
+            let one_time_key_message_ptr = one_time_key_message_buf.as_mut_ptr() as *mut _;
+            matches_result = olm_sys::olm_matches_inbound_session(
+                self.olm_session_ptr,
+                one_time_key_message_ptr,
+                one_time_key_message_buf.len(),
+            );
+        }
+
+        // value returned by libolm can be both result and error
+        matches_error = matches_result;
+        if matches_error == errors::olm_error() {
+            Err(OlmSession::last_error(self.olm_session_ptr))
+        } else {
+            match matches_result {
+                0 => Ok(false),
+                1 => Ok(true),
+                _ => Err(OlmSessionError::Unknown),
+            }
+        }
+    }
+
+    /// Checks if the 'prekey' message is for this in-bound session.
+    ///
+    /// # C-API equivalent
+    /// `olm_matches_inbound_session`
+    ///
+    /// # Errors
+    /// * `InvalidBase64` for failing to decode base64 in `one_time_key_message`
+    /// * `BadMessageVersion` for message from unsupported protocol version
+    /// * `BadMessageFormat` for failing to decode `one_time_key_message`
+    ///
+    pub fn matches_inbound_session_from(
+        &mut self,
+        their_identity_key: &str,
+        one_time_key_message: &mut str,
+    ) -> Result<bool, OlmSessionError> {
+        let matches_result;
+        let matches_error;
+
+        unsafe {
+            let their_identity_key_buf = their_identity_key.as_bytes();
+            let their_identity_key_ptr = their_identity_key_buf.as_ptr() as *const _;
+            let one_time_key_message_buf = one_time_key_message.as_bytes_mut();
+            let one_time_key_message_ptr = one_time_key_message_buf.as_mut_ptr() as *mut _;
+            matches_result = olm_sys::olm_matches_inbound_session_from(
+                self.olm_session_ptr,
+                their_identity_key_ptr,
+                their_identity_key_buf.len(),
+                one_time_key_message_ptr,
+                one_time_key_message_buf.len(),
+            );
+        }
+
+        // value returned by libolm can be both result and error
+        matches_error = matches_result;
+        if matches_error == errors::olm_error() {
+            Err(OlmSession::last_error(self.olm_session_ptr))
+        } else {
+            match matches_result {
+                0 => Ok(false),
+                1 => Ok(true),
+                _ => Err(OlmSessionError::Unknown),
+            }
+        }
+    }
 }
 
 /// The message types that are returned after encryption.
