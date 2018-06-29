@@ -66,3 +66,12 @@ pub enum OlmSessionError {
     OutputBufferTooSmall,
     Unknown,
 }
+
+#[derive(Debug, PartialEq)]
+pub enum OlmGroupSessionError {
+    BadAccountKey,
+    InvalidBase64,
+    NotEnoughRandom,
+    OutputBufferTooSmall,
+    Unknown,
+}

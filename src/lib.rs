@@ -35,6 +35,7 @@ extern crate ring;
 
 pub mod account;
 pub mod errors;
+pub mod outbound_group_session;
 pub mod session;
 pub mod utility;
 
