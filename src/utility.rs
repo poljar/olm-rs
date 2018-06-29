@@ -53,10 +53,10 @@ impl OlmUtility {
     /// Returns the last error that occurred for an OlmUtility
     /// Since error codes are encoded as CStrings by libolm,
     /// OlmUtilityError::Unknown is returned on an unknown error code.
-    fn last_error(&self) -> OlmUtilityError {
+    fn last_error(olm_utility_ptr: *mut olm_sys::OlmUtility) -> OlmUtilityError {
         let error;
         unsafe {
-            let error_raw = olm_sys::olm_utility_last_error(self.olm_utility_ptr);
+            let error_raw = olm_sys::olm_utility_last_error(olm_utility_ptr);
             error = CStr::from_ptr(error_raw).to_str().unwrap();
         }
 
@@ -100,7 +100,7 @@ impl OlmUtility {
 
         // Errors from sha256 are fatal
         if sha256_error == errors::olm_error() {
-            match self.last_error() {
+            match Self::last_error(self.olm_utility_ptr) {
                 OlmUtilityError::OutputBufferTooSmall => panic!("Buffer for sha256 is too small!"),
                 _ => panic!("Unknown error occured while creating sha256"),
             }
@@ -152,7 +152,7 @@ impl OlmUtility {
         }
 
         if ed25519_verify_error == errors::olm_error() {
-            Err(self.last_error())
+            Err(Self::last_error(self.olm_utility_ptr))
         } else {
             match ed25519_verify_result {
                 0 => Ok(true),
