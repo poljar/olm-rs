@@ -148,13 +148,13 @@ fn create_session_pair() -> (OlmSession, OlmSession) {
     let mut pickled_account_b = String::from("eModTvoFi9oOIkax4j4nuxw9Tcl/J8mOmUctUWI68Q89HSaaPTqR+tdlKQ85v2GOs5NlZCp7EuycypN9GQ4fFbHUCrS7nspa3GFBWsR8PnM8+wez5PWmfFZLg3drOvT0jbMjpDx0MjGYClHBqcrEpKx9oFaIRGBaX6HXzT4lRaWSJkXxuX92q8iGNrLn96PuAWFNcD+2JXpPcNFntslwLUNgqzpZ04aIFYwL80GmzyOgq3Bz1GO6u3TgCQEAmTIYN2QkO0MQeuSfe7UoMumhlAJ6R8GPcdSSPtmXNk4tdyzzlgpVq1hm7ZLKto+g8/5Aq3PvnvA8wCqno2+Pi1duK1pZFTIlActr");
     let mut account_a = OlmAccount::unpickle(&mut pickled_account_a, &[]).unwrap();
     let mut account_b = OlmAccount::unpickle(&mut pickled_account_b, &[]).unwrap();
-    let _identity_key_a = String::from("q/YhJtog/5VHCAS9rM9uUf6AaFk1yPe4GYuyUOXyQCg");
-    let _one_time_key_a = String::from("oWvzryma+B2onYjo3hM6A3Mgo/Yepm8HvgSvwZMTnjQ");
-    let identity_key_b = String::from("qIEr3TWcJQt4CP8QoKKJcCaukByIOpgh6erBkhLEa2o");
-    let one_time_key_b = String::from("WzsbsjD85iB1R32iWxfJdwkgmdz29ClMbJSJziECYwk");
-    let mut outbound = OlmSession::create_outbound_session(&mut account_b, &identity_key_b, &one_time_key_b).unwrap();
+    let _identity_key_a = String::from("qIEr3TWcJQt4CP8QoKKJcCaukByIOpgh6erBkhLEa2o");
+    let _one_time_key_a = String::from("WzsbsjD85iB1R32iWxfJdwkgmdz29ClMbJSJziECYwk");
+    let identity_key_b = String::from("q/YhJtog/5VHCAS9rM9uUf6AaFk1yPe4GYuyUOXyQCg");
+    let one_time_key_b = String::from("oWvzryma+B2onYjo3hM6A3Mgo/Yepm8HvgSvwZMTnjQ");
+    let mut outbound = OlmSession::create_outbound_session(&mut account_a, &identity_key_b, &one_time_key_b).unwrap();
     let mut pre_key = outbound.encrypt(""); // Payload does not matter for PreKey
-    let inbound = OlmSession::create_inbound_session(&mut account_a, &mut pre_key).unwrap();
+    let inbound = OlmSession::create_inbound_session(&mut account_b, &mut pre_key).unwrap();
     (inbound, outbound)
 }
 
