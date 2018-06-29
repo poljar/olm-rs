@@ -31,7 +31,7 @@ use std::mem;
 /// ```
 /// use olm_rs::account::OlmAccount;
 ///
-/// let mut olm_account = OlmAccount::new(); // Constructor
+/// let mut olm_account = OlmAccount::new().unwrap(); // Constructor
 /// println!("{}", olm_account.identity_keys());
 /// ```
 pub struct OlmAccount {
@@ -52,7 +52,7 @@ impl OlmAccount {
     /// # Panics
     /// * `NOT_ENOUGH_RANDOM` for OlmAccount's creation
     ///
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, OlmAccountError> {
         let olm_account_ptr;
         let mut olm_account_buf: Vec<u8>;
         let create_error;
@@ -73,14 +73,13 @@ impl OlmAccount {
             create_error = olm_sys::olm_create_account(olm_account_ptr, random_ptr, random_len);
         }
 
-        // No instance of OlmAccount exists yet, so we have to assume the error was with the random data
         if create_error == errors::olm_error() {
-            panic!("Not enough random data was supplied for creation of OlmAccount!");
-        }
-
-        OlmAccount {
-            _olm_account_buf: olm_account_buf,
-            olm_account_ptr: olm_account_ptr,
+            Err(Self::last_error(olm_account_ptr))
+        } else {
+            Ok(OlmAccount {
+                _olm_account_buf: olm_account_buf,
+                olm_account_ptr: olm_account_ptr,
+            })
         }
     }
 
@@ -97,7 +96,7 @@ impl OlmAccount {
     /// let identity_keys;
     /// let mut pickled;
     /// {
-    ///     let mut olm_account = OlmAccount::new();
+    ///     let mut olm_account = OlmAccount::new().unwrap();
     ///     identity_keys = olm_account.identity_keys();
     ///     pickled = olm_account.pickle(&[]);
     /// }
@@ -134,7 +133,7 @@ impl OlmAccount {
         }
 
         if pickle_error == errors::olm_error() {
-            match self.last_error() {
+            match Self::last_error(self.olm_account_ptr) {
                 OlmAccountError::OutputBufferTooSmall => {
                     panic!("Buffer for pickled OlmAccount is too small!")
                 }
@@ -176,18 +175,7 @@ impl OlmAccount {
         }
 
         if unpickle_error == errors::olm_error() {
-            let error;
-            // get CString error code and convert to String
-            unsafe {
-                let error_raw = olm_sys::olm_account_last_error(olm_account_ptr);
-                error = CStr::from_ptr(error_raw).to_str().unwrap();
-            }
-
-            match error {
-                "BAD_ACCOUNT_KEY" => Err(OlmAccountError::BadAccountKey),
-                "INVALID_BASE64" => Err(OlmAccountError::InvalidBase64),
-                _ => Err(OlmAccountError::Unknown),
-            }
+            Err(Self::last_error(olm_account_ptr))
         } else {
             Ok(OlmAccount {
                 _olm_account_buf: olm_account_buf,
@@ -231,7 +219,7 @@ impl OlmAccount {
         }
 
         if identity_keys_error == errors::olm_error() {
-            match self.last_error() {
+            match Self::last_error(self.olm_account_ptr) {
                 OlmAccountError::OutputBufferTooSmall => {
                     panic!("Buffer for OlmAccount's identity keys is too small!")
                 }
@@ -245,16 +233,18 @@ impl OlmAccount {
     /// Returns the last error that occurred for an OlmAccount.
     /// Since error codes are encoded as CStrings by libolm,
     /// OlmAccountError::Unknown is returned on an unknown error code.
-    fn last_error(&self) -> OlmAccountError {
+    fn last_error(olm_account_ptr: *mut olm_sys::OlmAccount) -> OlmAccountError {
         let error;
         // get CString error code and convert to String
         unsafe {
-            let error_raw = olm_sys::olm_account_last_error(self.olm_account_ptr);
+            let error_raw = olm_sys::olm_account_last_error(olm_account_ptr);
             error = CStr::from_ptr(error_raw).to_str().unwrap();
         }
 
         match error {
+            "BAD_ACCOUNT_KEY" => OlmAccountError::BadAccountKey,
             "BAD_MESSAGE_KEY_ID" => OlmAccountError::BadMessageKeyId,
+            "INVALID_BASE64" => OlmAccountError::InvalidBase64,
             "NOT_ENOUGH_RANDOM" => OlmAccountError::NotEnoughRandom,
             "OUTPUT_BUFFER_TOO_SMALL" => OlmAccountError::OutputBufferTooSmall,
             _ => OlmAccountError::Unknown,
@@ -293,7 +283,7 @@ impl OlmAccount {
         }
 
         if signature_error == errors::olm_error() {
-            match self.last_error() {
+            match Self::last_error(self.olm_account_ptr) {
                 OlmAccountError::OutputBufferTooSmall => {
                     panic!("Buffer for OlmAccount's signature is too small!")
                 }
@@ -354,7 +344,7 @@ impl OlmAccount {
         }
 
         if generate_error == errors::olm_error() {
-            match self.last_error() {
+            match Self::last_error(self.olm_account_ptr) {
                 OlmAccountError::NotEnoughRandom => {
                     panic!("Insufficient random data for generating one time keys for OlmAccount!")
                 }
@@ -396,7 +386,7 @@ impl OlmAccount {
         }
 
         if otks_error == errors::olm_error() {
-            match self.last_error() {
+            match Self::last_error(self.olm_account_ptr) {
                 OlmAccountError::OutputBufferTooSmall => {
                     panic!("Buffer for OlmAccount's one time keys is too small!")
                 }
@@ -437,7 +427,7 @@ impl OlmAccount {
         }
 
         if remove_error == errors::olm_error() {
-            Err(self.last_error())
+            Err(Self::last_error(self.olm_account_ptr))
         } else {
             Ok(())
         }

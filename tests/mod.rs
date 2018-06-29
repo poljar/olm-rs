@@ -41,7 +41,7 @@ fn library_version_valid() {
 
 #[test]
 fn identity_keys_valid() {
-    let olm_account = OlmAccount::new();
+    let olm_account = OlmAccount::new().unwrap();
     // verify length of entire JSON object
     let identity_keys = olm_account.identity_keys();
     assert_eq!(identity_keys.len(), 116);
@@ -59,8 +59,8 @@ fn identity_keys_valid() {
 #[test]
 fn operational_rng() {
     // Check that generated keys aren't the same
-    let olm_account = OlmAccount::new();
-    let olm_account2 = OlmAccount::new();
+    let olm_account = OlmAccount::new().unwrap();
+    let olm_account2 = OlmAccount::new().unwrap();
     let identity_keys = olm_account.identity_keys();
     let identity_keys2 = olm_account2.identity_keys();
     assert_ne!(identity_keys, identity_keys2);
@@ -69,7 +69,7 @@ fn operational_rng() {
 #[test]
 fn signatures_valid() {
     // test signature being valid base64
-    let olm_account = OlmAccount::new();
+    let olm_account = OlmAccount::new().unwrap();
     let mut bytes: Vec<u8> = vec![72, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 33];
     let signature = olm_account.sign_bytes(bytes.as_mut_slice());
     assert_eq!(signature.len(), 86);
@@ -87,7 +87,7 @@ fn signatures_valid() {
 
 #[test]
 fn one_time_keys_valid() {
-    let mut olm_account = OlmAccount::new();
+    let mut olm_account = OlmAccount::new().unwrap();
     let max_number_otks = olm_account.max_number_of_one_time_keys();
     assert_eq!(100, max_number_otks);
 
@@ -133,7 +133,7 @@ fn sha256_valid() {
 fn account_pickling_fails_on_wrong_key() {
     let mut pickled;
     {
-        let mut olm_account = OlmAccount::new();
+        let mut olm_account = OlmAccount::new().unwrap();
         pickled = olm_account.pickle(&[3, 2, 1]);
     }
     // wrong key
