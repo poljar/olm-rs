@@ -143,24 +143,38 @@ fn account_pickling_fails_on_wrong_key() {
     assert_eq!(olm_account_bad.err(), Some(OlmAccountError::BadAccountKey));
 }
 
-#[test]
-fn olm_outbound_session_creation() {
+fn create_session_pair() -> (OlmSession, OlmSession) {
     let mut pickled_account_a = String::from("eOBXIKivUT6YYowRH031BNv7zNmzqM5B7CpXdyeaPvala5mt7/OeqrG1qVA7vA1SYloFyvJPIy0QNkD3j1HiPl5vtZHN53rtfZ9exXDok03zjmssqn4IJsqcA7Fbo1FZeKafG0NFcWwCPTdmcV7REqxjqGm3I4K8MQFa45AdTGSUu2C12cWeOcbSMlcINiMral+Uyah1sgPmLJ18h1qcnskXUXQvpffZ5DiUw1Iz5zxnwOQF1GVyowPJD7Zdugvj75RQnDxAn6CzyvrY2k2CuedwqDC3fIXM2xdUNWttW4nC2g4InpBhCVvNwhZYxlUb5BUEjmPI2AB3dAL5ry6o9MFncmbN6x5x");
     let mut pickled_account_b = String::from("eModTvoFi9oOIkax4j4nuxw9Tcl/J8mOmUctUWI68Q89HSaaPTqR+tdlKQ85v2GOs5NlZCp7EuycypN9GQ4fFbHUCrS7nspa3GFBWsR8PnM8+wez5PWmfFZLg3drOvT0jbMjpDx0MjGYClHBqcrEpKx9oFaIRGBaX6HXzT4lRaWSJkXxuX92q8iGNrLn96PuAWFNcD+2JXpPcNFntslwLUNgqzpZ04aIFYwL80GmzyOgq3Bz1GO6u3TgCQEAmTIYN2QkO0MQeuSfe7UoMumhlAJ6R8GPcdSSPtmXNk4tdyzzlgpVq1hm7ZLKto+g8/5Aq3PvnvA8wCqno2+Pi1duK1pZFTIlActr");
     let mut account_a = OlmAccount::unpickle(&mut pickled_account_a, &[]).unwrap();
-    let mut _account_b = OlmAccount::unpickle(&mut pickled_account_b, &[]).unwrap();
-    let _identity_key_a = String::from("q/YhJtog/5VHCAS9rM9uUf6AaFk1yPe4GYuyUOXyQCg");
-    let _one_time_key_a = String::from("oWvzryma+B2onYjo3hM6A3Mgo/Yepm8HvgSvwZMTnjQ");
-    let identity_key_b = String::from("qIEr3TWcJQt4CP8QoKKJcCaukByIOpgh6erBkhLEa2o");
-    let one_time_key_b = String::from("WzsbsjD85iB1R32iWxfJdwkgmdz29ClMbJSJziECYwk");
-    let mut outbound_session =
-        OlmSession::create_outbound_session(&mut account_a, &identity_key_b, &one_time_key_b)
-            .unwrap();
+    let mut account_b = OlmAccount::unpickle(&mut pickled_account_b, &[]).unwrap();
+    let _identity_key_a = String::from("qIEr3TWcJQt4CP8QoKKJcCaukByIOpgh6erBkhLEa2o");
+    let _one_time_key_a = String::from("WzsbsjD85iB1R32iWxfJdwkgmdz29ClMbJSJziECYwk");
+    let identity_key_b = String::from("q/YhJtog/5VHCAS9rM9uUf6AaFk1yPe4GYuyUOXyQCg");
+    let one_time_key_b = String::from("oWvzryma+B2onYjo3hM6A3Mgo/Yepm8HvgSvwZMTnjQ");
+    let mut outbound = OlmSession::create_outbound_session(&mut account_a, &identity_key_b, &one_time_key_b).unwrap();
+    let mut pre_key = outbound.encrypt(""); // Payload does not matter for PreKey
+    let inbound = OlmSession::create_inbound_session(&mut account_b, &mut pre_key).unwrap();
+    (inbound, outbound)
+}
+
+#[test]
+fn olm_outbound_session_creation() {
+    let (_, mut outbound_session) = create_session_pair();
+
     assert_eq!(
         OlmMessageType::PreKey,
         outbound_session.encrypt_message_type()
     );
     assert!(!outbound_session.has_received_message());
+}
+
+#[test]
+fn olm_encrypt_decrypt() {
+    let (inbound_session, mut outbound_session) = create_session_pair();
+    let encrypted = outbound_session.encrypt("Hello world!");
+    let decrypted = inbound_session.decrypt(outbound_session.encrypt_message_type(), encrypted).unwrap();
+    assert_eq!(decrypted, "Hello world!");
 }
 
 #[test]
