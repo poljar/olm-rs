@@ -156,13 +156,12 @@ impl OlmOutboundGroupSession {
         }
     }
 
-    pub fn encrypt(&self, plaintext: &str) -> String {
+    pub fn encrypt(&self, mut plaintext: String) -> String {
         let message_result;
-        let mut plaintext_cloned = plaintext.clone().to_owned();
         let message_len;
 
         unsafe {
-            let plaintext_buf = plaintext_cloned.as_bytes_mut();
+            let plaintext_buf = plaintext.as_bytes_mut();
             let plaintext_len = plaintext_buf.len();
             let plaintext_ptr = plaintext_buf.as_mut_ptr() as *mut u8;
             let message_max_len =
