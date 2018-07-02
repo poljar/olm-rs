@@ -188,7 +188,7 @@ impl OlmSession {
     /// # Panics
     /// * `OutputBufferTooSmall` if the supplied output buffer for the ID was too small
     ///
-    pub fn session_id(&mut self) -> String {
+    pub fn session_id(&self) -> String {
         let session_id_result;
         let error;
 
@@ -226,7 +226,7 @@ impl OlmSession {
     /// # Panics
     /// * `OUTPUT_BUFFER_TOO_SMALL` for OlmSession's pickled buffer
     ///
-    pub fn pickle(&mut self, key: &[u8]) -> String {
+    pub fn pickle(&self, key: &[u8]) -> String {
         let pickled_result;
         let pickle_error;
 
@@ -294,7 +294,7 @@ impl OlmSession {
     /// * `NotEnoughRandom` for too little supplied random data
     /// * `OutputBufferTooSmall` for encrypted message
     ///
-    pub fn encrypt(&mut self, plaintext: &str) -> String {
+    pub fn encrypt(&self, plaintext: &str) -> String {
         let encrypt_error;
         let message_result;
 
@@ -461,7 +461,7 @@ impl OlmSession {
     /// # C-API equivalent
     /// `olm_session_has_received_message`
     ///
-    pub fn has_received_message(&mut self) -> bool {
+    pub fn has_received_message(&self) -> bool {
         let received_message;
 
         unsafe {
@@ -483,7 +483,7 @@ impl OlmSession {
     /// * `BadMessageFormat` for failing to decode `one_time_key_message`
     ///
     pub fn matches_inbound_session(
-        &mut self,
+        &self,
         one_time_key_message: &mut str,
     ) -> Result<bool, OlmSessionError> {
         let matches_result;
@@ -523,7 +523,7 @@ impl OlmSession {
     /// * `BadMessageFormat` for failing to decode `one_time_key_message`
     ///
     pub fn matches_inbound_session_from(
-        &mut self,
+        &self,
         their_identity_key: &str,
         one_time_key_message: &mut str,
     ) -> Result<bool, OlmSessionError> {

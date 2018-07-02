@@ -109,7 +109,7 @@ impl OlmAccount {
     /// # Panics
     /// * `OUTPUT_BUFFER_TOO_SMALL` for OlmAccount's pickled buffer
     ///
-    pub fn pickle(&mut self, key: &[u8]) -> String {
+    pub fn pickle(&self, key: &[u8]) -> String {
         let pickled_result;
         let pickle_error;
 
@@ -317,7 +317,7 @@ impl OlmAccount {
     /// # Panics
     /// * `NOT_ENOUGH_RANDOM` for the creation of one time keys
     ///
-    pub fn generate_one_time_keys(&mut self, number_of_keys: usize) {
+    pub fn generate_one_time_keys(&self, number_of_keys: usize) {
         let generate_error;
         unsafe {
             // Get correct length for the random buffer
@@ -363,7 +363,7 @@ impl OlmAccount {
     /// # Panics
     /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied one time keys buffer
     ///
-    pub fn one_time_keys(&mut self) -> String {
+    pub fn one_time_keys(&self) -> String {
         let otks_result: String;
         let otks_error;
         unsafe {
@@ -402,7 +402,7 @@ impl OlmAccount {
     /// # C-API equivalent
     /// `olm_account_mark_keys_as_published`
     ///
-    pub fn mark_keys_as_published(&mut self) {
+    pub fn mark_keys_as_published(&self) {
         unsafe {
             olm_sys::olm_account_mark_keys_as_published(self.olm_account_ptr);
         }
@@ -417,7 +417,7 @@ impl OlmAccount {
     /// * `BAD_MESSAGE_KEY_ID` when the account doesn't hold a matching one time key
     ///
     pub fn remove_one_time_keys(
-        &mut self,
+        &self,
         session: &mut OlmSession,
     ) -> Result<(), OlmAccountError> {
         let remove_error;
