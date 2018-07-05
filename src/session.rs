@@ -45,7 +45,7 @@ impl OlmSession {
     ///
     pub fn create_inbound_session(
         account: &mut OlmAccount,
-        one_time_key_message: &mut str,
+        mut one_time_key_message: String,
     ) -> Result<Self, OlmSessionError> {
         Self::create_session_with(|olm_session_ptr| unsafe {
             let one_time_key_message_buf = one_time_key_message.as_bytes_mut();
@@ -72,7 +72,7 @@ impl OlmSession {
     pub fn create_inbound_session_from(
         account: &mut OlmAccount,
         their_identity_key: &str,
-        one_time_key_message: &mut str,
+        mut one_time_key_message: String,
     ) -> Result<Self, OlmSessionError> {
         Self::create_session_with(|olm_session_ptr| {
             let their_identity_key_buf = their_identity_key.as_bytes();
@@ -270,7 +270,7 @@ impl OlmSession {
     /// * `BadAccountKey` if the key doesn't match the one the session was encrypted with
     /// * `InvalidBase64` if decoding the supplied `pickled` string slice fails
     ///
-    pub fn unpickle(pickled: &mut str, key: &[u8]) -> Result<Self, OlmSessionError> {
+    pub fn unpickle(mut pickled: String, key: &[u8]) -> Result<Self, OlmSessionError> {
         Self::create_session_with(|olm_session_ptr| unsafe {
             let pickled_len = pickled.len();
             let pickled_buf = pickled.as_bytes_mut();
@@ -484,17 +484,16 @@ impl OlmSession {
     ///
     pub fn matches_inbound_session(
         &self,
-        one_time_key_message: &mut str,
+        mut one_time_key_message: String,
     ) -> Result<bool, OlmSessionError> {
         let matches_result;
         let matches_error;
 
         unsafe {
             let one_time_key_message_buf = one_time_key_message.as_bytes_mut();
-            let one_time_key_message_ptr = one_time_key_message_buf.as_mut_ptr() as *mut _;
             matches_result = olm_sys::olm_matches_inbound_session(
                 self.olm_session_ptr,
-                one_time_key_message_ptr,
+                one_time_key_message_buf.as_mut_ptr() as *mut _,
                 one_time_key_message_buf.len(),
             );
         }
@@ -525,7 +524,7 @@ impl OlmSession {
     pub fn matches_inbound_session_from(
         &self,
         their_identity_key: &str,
-        one_time_key_message: &mut str,
+        mut one_time_key_message: String,
     ) -> Result<bool, OlmSessionError> {
         let matches_result;
         let matches_error;
@@ -534,12 +533,11 @@ impl OlmSession {
             let their_identity_key_buf = their_identity_key.as_bytes();
             let their_identity_key_ptr = their_identity_key_buf.as_ptr() as *const _;
             let one_time_key_message_buf = one_time_key_message.as_bytes_mut();
-            let one_time_key_message_ptr = one_time_key_message_buf.as_mut_ptr() as *mut _;
             matches_result = olm_sys::olm_matches_inbound_session_from(
                 self.olm_session_ptr,
                 their_identity_key_ptr,
                 their_identity_key_buf.len(),
-                one_time_key_message_ptr,
+                one_time_key_message_buf.as_mut_ptr() as *mut _,
                 one_time_key_message_buf.len(),
             );
         }

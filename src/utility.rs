@@ -76,18 +76,17 @@ impl OlmUtility {
     /// # Panics
     /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied output buffer
     ///
-    pub fn sha256_bytes(&self, input_buf: &mut [u8]) -> String {
+    pub fn sha256_bytes(&self, input_buf: &[u8]) -> String {
         let sha256_result;
         let sha256_error;
         unsafe {
-            let input_ptr = input_buf.as_mut_ptr() as *mut _;
             let output_len = olm_sys::olm_sha256_length(self.olm_utility_ptr);
             let mut output_buf = vec![0; output_len];
             let output_ptr = output_buf.as_mut_ptr() as *mut _;
 
             sha256_error = olm_sys::olm_sha256(
                 self.olm_utility_ptr,
-                input_ptr,
+                input_buf.as_ptr() as *const _,
                 input_buf.len(),
                 output_ptr,
                 output_len,
@@ -111,8 +110,8 @@ impl OlmUtility {
 
     /// Convenience function that converts the UTF-8 message
     /// to bytes and then calls `sha256_bytes()`, returning its output.
-    pub fn sha256_utf8_msg(&self, msg: &mut str) -> String {
-        unsafe { self.sha256_bytes(msg.as_bytes_mut()) }
+    pub fn sha256_utf8_msg(&self, msg: &str) -> String {
+        self.sha256_bytes(msg.as_bytes())
     }
 
     /// Verify a ed25519 signature.
@@ -122,29 +121,22 @@ impl OlmUtility {
     ///
     pub fn ed25519_verify_bytes(
         &self,
-        key: &mut str,
-        data_buf: &mut [u8],
-        signature: &mut str,
+        key: &str,
+        data_buf: &[u8],
+        signature: &mut [u8],
     ) -> Result<bool, OlmUtilityError> {
         let ed25519_verify_result: usize;
         let ed25519_verify_error: usize;
 
         unsafe {
-            let key_buf = key.as_bytes_mut();
-            let signature_buf = signature.as_bytes_mut();
-
-            let key_ptr = key_buf.as_mut_ptr() as *mut _;
-            let data_ptr = data_buf.as_mut_ptr() as *mut _;
-            let signature_ptr = signature_buf.as_mut_ptr() as *mut _;
-
             ed25519_verify_error = olm_sys::olm_ed25519_verify(
                 self.olm_utility_ptr,
-                key_ptr,
-                key_buf.len(),
-                data_ptr,
+                key.as_ptr() as *const _,
+                key.len(),
+                data_buf.as_ptr() as *const _,
                 data_buf.len(),
-                signature_ptr,
-                signature_buf.len(),
+                signature.as_mut_ptr() as *mut _,
+                signature.len(),
             );
 
             // Since the two values are the same it is safe to clone
@@ -165,11 +157,11 @@ impl OlmUtility {
     /// to bytes and calls `ed25519_verify_bytes()`, returning its output
     pub fn ed25519_verify_utf8_msg(
         &self,
-        key: &mut str,
-        message: &mut str,
+        key: &str,
+        message: &str,
         signature: &mut str,
     ) -> Result<bool, OlmUtilityError> {
-        unsafe { self.ed25519_verify_bytes(key, message.as_bytes_mut(), signature) }
+        self.ed25519_verify_bytes(key, message.as_bytes(), unsafe { signature.as_bytes_mut() })
     }
 }
 
