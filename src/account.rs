@@ -94,13 +94,10 @@ impl OlmAccount {
     /// use olm_rs::account::OlmAccount;
     ///
     /// let identity_keys;
-    /// let mut pickled;
-    /// {
-    ///     let mut olm_account = OlmAccount::new().unwrap();
-    ///     identity_keys = olm_account.identity_keys();
-    ///     pickled = olm_account.pickle(&[]);
-    /// }
-    /// let olm_account_2 = OlmAccount::unpickle(&mut pickled, &[]).unwrap();
+    /// let mut olm_account = OlmAccount::new().unwrap();
+    /// identity_keys = olm_account.identity_keys();
+    /// let pickled = olm_account.pickle(&[]);
+    /// let olm_account_2 = OlmAccount::unpickle(pickled, &[]).unwrap();
     /// let identity_keys_2 = olm_account_2.identity_keys();
     ///
     /// assert_eq!(identity_keys, identity_keys_2);
@@ -153,7 +150,7 @@ impl OlmAccount {
     /// * `BadAccountKey` if the key doesn't match the one the account was encrypted with
     /// * `InvalidBase64` if decoding the supplied `pickled` string slice fails
     ///
-    pub fn unpickle(pickled: &mut str, key: &[u8]) -> Result<Self, OlmAccountError> {
+    pub fn unpickle(mut pickled: String, key: &[u8]) -> Result<Self, OlmAccountError> {
         let olm_account_ptr;
         let mut olm_account_buf: Vec<u8>;
         let unpickle_error;
@@ -259,11 +256,11 @@ impl OlmAccount {
     /// # Panics
     /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied signature buffer
     ///
-    pub fn sign_bytes(&self, input_buf: &mut [u8]) -> String {
+    pub fn sign_bytes(&self, input_buf: &[u8]) -> String {
         let signature_result;
         let signature_error;
         unsafe {
-            let input_ptr = input_buf.as_mut_ptr() as *mut _;
+            let input_ptr = input_buf.as_ptr() as *const _;
             let signature_len = olm_sys::olm_account_signature_length(self.olm_account_ptr);
             let mut signature_buf: Vec<u8> = vec![0; signature_len];
             let signature_ptr = signature_buf.as_mut_ptr() as *mut _;
@@ -296,8 +293,8 @@ impl OlmAccount {
 
     /// Convenience function that converts the UTF-8 message
     /// to bytes and then calls `sign_bytes()`, returning its output.
-    pub fn sign_utf8_msg(&self, msg: &mut str) -> String {
-        unsafe { self.sign_bytes(msg.as_bytes_mut()) }
+    pub fn sign_utf8_msg(&self, msg: &str) -> String {
+        self.sign_bytes(msg.as_bytes())
     }
 
     /// Maximum number of one time keys that this OlmAccount can currently hold.
