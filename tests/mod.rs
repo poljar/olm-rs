@@ -152,7 +152,9 @@ fn create_session_pair() -> (OlmSession, OlmSession) {
     let _one_time_key_a = String::from("WzsbsjD85iB1R32iWxfJdwkgmdz29ClMbJSJziECYwk");
     let identity_key_b = String::from("q/YhJtog/5VHCAS9rM9uUf6AaFk1yPe4GYuyUOXyQCg");
     let one_time_key_b = String::from("oWvzryma+B2onYjo3hM6A3Mgo/Yepm8HvgSvwZMTnjQ");
-    let outbound = OlmSession::create_outbound_session(&mut account_a, &identity_key_b, &one_time_key_b).unwrap();
+    let outbound =
+        OlmSession::create_outbound_session(&mut account_a, &identity_key_b, &one_time_key_b)
+            .unwrap();
     let pre_key = outbound.encrypt(""); // Payload does not matter for PreKey
     let inbound = OlmSession::create_inbound_session(&mut account_b, pre_key).unwrap();
     (inbound, outbound)
@@ -173,7 +175,9 @@ fn olm_outbound_session_creation() {
 fn olm_encrypt_decrypt() {
     let (inbound_session, outbound_session) = create_session_pair();
     let encrypted = outbound_session.encrypt("Hello world!");
-    let decrypted = inbound_session.decrypt(outbound_session.encrypt_message_type(), encrypted).unwrap();
+    let decrypted = inbound_session
+        .decrypt(outbound_session.encrypt_message_type(), encrypted)
+        .unwrap();
     assert_eq!(decrypted, "Hello world!");
 }
 
@@ -185,7 +189,7 @@ fn session_pickling_valid() {
     let one_time_key_b = String::from("WzsbsjD85iB1R32iWxfJdwkgmdz29ClMbJSJziECYwk");
     let outbound_session =
         OlmSession::create_outbound_session(&mut account_a, &identity_key_b, &one_time_key_b)
-        .unwrap();
+            .unwrap();
 
     let session_id_before = outbound_session.session_id();
     let pickled_session = outbound_session.pickle(&[]);

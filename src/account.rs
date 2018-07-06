@@ -413,10 +413,7 @@ impl OlmAccount {
     /// # Errors
     /// * `BAD_MESSAGE_KEY_ID` when the account doesn't hold a matching one time key
     ///
-    pub fn remove_one_time_keys(
-        &self,
-        session: &mut OlmSession,
-    ) -> Result<(), OlmAccountError> {
+    pub fn remove_one_time_keys(&self, session: &mut OlmSession) -> Result<(), OlmAccountError> {
         let remove_error;
         unsafe {
             remove_error =
