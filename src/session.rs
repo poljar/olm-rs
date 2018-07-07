@@ -153,7 +153,7 @@ impl OlmSession {
         } else {
             Ok(OlmSession {
                 _olm_session_buf: olm_session_buf,
-                olm_session_ptr: olm_session_ptr,
+                olm_session_ptr,
             })
         }
     }
@@ -557,7 +557,7 @@ impl OlmSession {
 }
 
 /// The message types that are returned after encryption.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum OlmMessageType {
     PreKey,
     Message,

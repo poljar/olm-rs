@@ -78,7 +78,7 @@ impl OlmAccount {
         } else {
             Ok(OlmAccount {
                 _olm_account_buf: olm_account_buf,
-                olm_account_ptr: olm_account_ptr,
+                olm_account_ptr,
             })
         }
     }
@@ -176,7 +176,7 @@ impl OlmAccount {
         } else {
             Ok(OlmAccount {
                 _olm_account_buf: olm_account_buf,
-                olm_account_ptr: olm_account_ptr,
+                olm_account_ptr,
             })
         }
     }
