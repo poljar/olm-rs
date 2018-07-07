@@ -44,7 +44,7 @@ impl OlmSession {
     /// * `BadMessageKeyId`
     ///
     pub fn create_inbound_session(
-        account: &mut OlmAccount,
+        account: &OlmAccount,
         mut one_time_key_message: String,
     ) -> Result<Self, OlmSessionError> {
         Self::create_session_with(|olm_session_ptr| unsafe {
@@ -70,7 +70,7 @@ impl OlmSession {
     /// * `BadMessageKeyId`
     ///
     pub fn create_inbound_session_from(
-        account: &mut OlmAccount,
+        account: &OlmAccount,
         their_identity_key: &str,
         mut one_time_key_message: String,
     ) -> Result<Self, OlmSessionError> {
@@ -103,7 +103,7 @@ impl OlmSession {
     /// * `NotEnoughRandom` if not enough random data was supplied
     ///
     pub fn create_outbound_session(
-        account: &mut OlmAccount,
+        account: &OlmAccount,
         their_identity_key: &str,
         their_one_time_key: &str,
     ) -> Result<Self, OlmSessionError> {
