@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+//! This module wraps around all functions in `outbound_group_session.h`.
+
 use errors;
 use errors::OlmGroupSessionError;
 use olm_sys;
@@ -21,12 +23,22 @@ use ring::rand::{SecureRandom, SystemRandom};
 use std::ffi::CStr;
 use std::mem;
 
+/// An out-bound group session is responsible for encrypting outgoing
+/// communication in a Megolm session.
 pub struct OlmOutboundGroupSession {
     _group_session_buf: Vec<u8>,
     pub group_session_ptr: *mut olm_sys::OlmOutboundGroupSession,
 }
 
 impl OlmOutboundGroupSession {
+    /// Creates a new instance of `OlmOutboundGroupSession`.
+    ///
+    /// # C-API equivalent
+    /// `olm_init_outbound_group_session`
+    ///
+    /// # Panics
+    /// * `NotEnoughRandom` for `OlmOutboundGroupSession`'s creation
+    ///
     pub fn new() -> Self {
         let olm_outbound_group_session_ptr;
         let mut olm_outbound_group_session_buf: Vec<u8>;
@@ -68,6 +80,15 @@ impl OlmOutboundGroupSession {
         }
     }
 
+    /// Serialises an `OlmOutboundGroupSession` to encrypted Base64. The encryption key is free to choose
+    /// (empty byte slice is allowed).
+    ///
+    /// # C-API equivalent
+    /// `olm_pickle_outbound_group_session`
+    ///
+    /// # Panics
+    /// * `OutputBufferTooSmall` for `OlmOutboundGroupSession`'s pickled buffer
+    ///
     pub fn pickle(&self, key: &[u8]) -> String {
         let pickled_result;
         let pickle_error;
@@ -104,6 +125,15 @@ impl OlmOutboundGroupSession {
         }
     }
 
+    /// Deserialises from encrypted Base64 that was previously obtained by pickling an `OlmOutboundGroupSession`.
+    ///
+    /// # C-API equivalent
+    /// `olm_unpickle_outbound_group_session`
+    ///
+    /// # Errors
+    /// * `BadAccountKey` if the key doesn't match the one the session was encrypted with
+    /// * `InvalidBase64` if decoding the supplied `pickled` string slice fails
+    ///
     pub fn unpickle(pickled: &str, key: &[u8]) -> Result<Self, OlmGroupSessionError> {
         let olm_outbound_group_session_ptr;
         let mut olm_outbound_group_session_buf: Vec<u8>;
@@ -138,6 +168,9 @@ impl OlmOutboundGroupSession {
         }
     }
 
+    /// Returns the last error that occurred for an `OlmOutboundSession`.
+    /// Since error codes are encoded as CStrings by libolm,
+    /// OlmGroupSessionError::Unknown is returned on an unknown error code.
     fn last_error(
         group_session_ptr: *const olm_sys::OlmOutboundGroupSession,
     ) -> OlmGroupSessionError {
@@ -156,6 +189,14 @@ impl OlmOutboundGroupSession {
         }
     }
 
+    /// Encrypts a plaintext message using the session.
+    ///
+    /// # C-API equivalent
+    /// * `olm_group_encrypt`
+    ///
+    /// # Panics
+    /// * `OutputBufferTooSmall` for encrypted message
+    ///
     pub fn encrypt(&self, mut plaintext: String) -> String {
         let message_result;
         let message_len;
@@ -198,10 +239,25 @@ impl OlmOutboundGroupSession {
         message_result
     }
 
+    /// Get the current message index for this session.
+    ///
+    /// Each message is sent with an increasing index; this returns the index for the next message.
+    ///
+    /// # C-API equivalent
+    /// * `olm_outbound_group_session_message_index`
+    ///
     pub fn session_message_index(&self) -> u32 {
         unsafe { olm_sys::olm_outbound_group_session_message_index(self.group_session_ptr) }
     }
 
+    /// Get a base64-encoded identifier for this session.
+    ///
+    /// # C-API equivalent
+    /// * `olm_outbound_group_session_id`
+    ///
+    /// # Panics
+    /// * `OutputBufferTooSmall` for too small ID buffer
+    ///
     pub fn session_id(&self) -> String {
         let id_len;
         let id_result;
@@ -233,6 +289,17 @@ impl OlmOutboundGroupSession {
         id_result
     }
 
+    /// Get the base64-encoded current ratchet key for this session.
+    ///
+    /// Each message is sent with a different ratchet key. This function returns the
+    /// ratchet key that will be used for the next message.
+    ///
+    /// # C-API equivalent
+    /// * `olm_outbound_group_session_key`
+    ///
+    /// # Panics
+    /// * `OutputBufferTooSmall` for too small session key buffer
+    ///
     pub fn session_key(&self) -> String {
         let key_len;
         let key_result;

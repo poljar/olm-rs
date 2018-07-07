@@ -14,18 +14,31 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>
 
+//! This module wraps around all functions in `inbound_group_session.h`.
+
 use errors;
 use errors::OlmGroupSessionError;
 use olm_sys;
 use std::ffi::CStr;
 use std::mem;
 
+/// An in-bound group session is responsible for decrypting incoming
+/// communication in a Megolm session.
 pub struct OlmInboundGroupSession {
     _group_session_buf: Vec<u8>,
     pub group_session_ptr: *mut olm_sys::OlmInboundGroupSession,
 }
 
 impl OlmInboundGroupSession {
+    /// Creates a new instance of `OlmInboundGroupSession`.
+    ///
+    /// # C-API equivalent
+    /// `olm_init_inbound_group_session`
+    ///
+    /// # Errors
+    /// * `InvalidBase64` if session key is invalid base64
+    /// * `BadSessionKey` if session key is invalid
+    ///
     pub fn new(key: &str) -> Result<Self, OlmGroupSessionError> {
         let olm_inbound_group_session_ptr;
         let mut olm_inbound_group_session_buf: Vec<u8>;
@@ -55,6 +68,15 @@ impl OlmInboundGroupSession {
         }
     }
 
+    /// Import an inbound group session, from a previous export.
+    ///
+    /// # C-API equivalent
+    /// `olm_import_inbound_group_session`
+    ///
+    /// # Errors
+    /// * `InvalidBase64` if session key is invalid base64
+    /// * `BadSessionKey` if session key is invalid
+    ///
     pub fn import(key: &str) -> Result<Self, OlmGroupSessionError> {
         let olm_inbound_group_session_ptr;
         let mut olm_inbound_group_session_buf;
@@ -86,6 +108,15 @@ impl OlmInboundGroupSession {
         }
     }
 
+    /// Serialises an `OlmInboundGroupSession` to encrypted Base64. The encryption key is free to choose
+    /// (empty byte slice is allowed).
+    ///
+    /// # C-API equivalent
+    /// `olm_pickle_inbound_group_session`
+    ///
+    /// # Panics
+    /// * `OutputBufferTooSmall` for `OlmInboundGroupSession`'s pickled buffer
+    ///
     pub fn pickle(&self, key: &[u8]) -> String {
         let pickled_result;
         let pickle_error;
@@ -122,6 +153,15 @@ impl OlmInboundGroupSession {
         }
     }
 
+    /// Deserialises from encrypted Base64 that was previously obtained by pickling an `OlmInboundGroupSession`.
+    ///
+    /// # C-API equivalent
+    /// `olm_unpickle_inbound_group_session`
+    ///
+    /// # Errors
+    /// * `BadAccountKey` if the key doesn't match the one the session was encrypted with
+    /// * `InvalidBase64` if decoding the supplied `pickled` string slice fails
+    ///
     pub fn unpickle(pickled: &str, key: &[u8]) -> Result<Self, OlmGroupSessionError> {
         let olm_inbound_group_session_ptr;
         let mut olm_inbound_group_session_buf: Vec<u8>;
@@ -156,6 +196,9 @@ impl OlmInboundGroupSession {
         }
     }
 
+    /// Returns the last error that occurred for an `OlmInboundSession`.
+    /// Since error codes are encoded as CStrings by libolm,
+    /// OlmGroupSessionError::Unknown is returned on an unknown error code.
     fn last_error(
         group_session_ptr: *const olm_sys::OlmInboundGroupSession,
     ) -> OlmGroupSessionError {
@@ -174,6 +217,24 @@ impl OlmInboundGroupSession {
         }
     }
 
+    /// Decrypts ciphertext received for this group session.
+    ///
+    /// Returns both plaintext and message index.
+    ///
+    /// # C-API equivalent
+    /// * `olm_group_decrypt`
+    ///
+    /// # Errors
+    /// * `InvalidBase64` if the message is invalid base64
+    /// * `BadMessageVersion` if the message was encrypted with an unsupported version of the protocol
+    /// * `BadMessageFormat` if the message headers could not be decoded
+    /// * `BadMessageMac` if the message could not be verified
+    /// * `UnknownMessageIndex` if we do not have a session key corresponding to the message's index
+    /// (ie, it was sent before the session key was shared with us)
+    ///
+    /// # Panics
+    /// * `OutputBufferTooSmall` for decrypted ciphertext
+    ///
     pub fn decrypt(&self, mut message: String) -> Result<(String, u32), OlmGroupSessionError> {
         let message_index = 0;
         let decrypt_error;
@@ -215,12 +276,31 @@ impl OlmInboundGroupSession {
 
         if decrypt_error == errors::olm_error() {
             // TODO: extend error states for OlmGroupSessionError
-            Err(Self::last_error(self.group_session_ptr))
+            let error_code = Self::last_error(self.group_session_ptr);
+
+            if error_code == OlmGroupSessionError::OutputBufferTooSmall {
+                panic!("Output buffer for decrypting ciphertext from group session too small!");
+            }
+
+            Err(error_code)
         } else {
             Ok((plaintext, message_index))
         }
     }
 
+    /// Export the base64-encoded ratchet key for this session, at the given index,
+    /// in a format which can be used by import
+    ///
+    /// # C-API equivalent
+    /// * `olm_export_inbound_group_session`
+    ///
+    /// # Errors
+    /// * `UnkownMessageIndex` if we do not have a session key corresponding to the given index
+    /// (ie, it was sent before the session key was shared with us)
+    ///
+    /// # Panics
+    /// * `OutputBufferTooSmall` for export buffer
+    ///
     pub fn export(&self, message_index: u32) -> Result<String, OlmGroupSessionError> {
         let export_error;
         let export_result;
@@ -243,16 +323,35 @@ impl OlmInboundGroupSession {
         }
 
         if export_error == errors::olm_error() {
-            Err(Self::last_error(self.group_session_ptr))
+            let error_code = Self::last_error(self.group_session_ptr);
+
+            if error_code == OlmGroupSessionError::OutputBufferTooSmall {
+                panic!("Output buffer was too small when exporting an OlmInboundGroupSession!");
+            }
+
+            Err(error_code)
         } else {
             Ok(export_result)
         }
     }
 
+    /// Get the first message index we know how to decrypt.
+    ///
+    /// # C-API equivalent
+    /// * `olm_inbound_group_session_first_known_index`
+    ///
     pub fn first_known_index(&self) -> u32 {
         unsafe { olm_sys::olm_inbound_group_session_first_known_index(self.group_session_ptr) }
     }
 
+    /// Get a base64-encoded identifier for this session.
+    ///
+    /// # C-API equivalent
+    /// * `olm_inbound_group_session_id`
+    ///
+    /// # Panics
+    /// * `OutputBufferTooSmall` for session ID buffer
+    ///
     pub fn session_id(&self) -> String {
         let session_id_error;
         let session_id_result;
@@ -289,6 +388,15 @@ impl OlmInboundGroupSession {
         session_id_result
     }
 
+    /// Check if the session has been verified as a valid session.
+    ///
+    /// (A session is verified either because the original session share was signed,
+    /// or because we have subsequently successfully decrypted a message.)
+    ///
+    /// This is mainly intended for the unit tests (in libolm), currently.
+    ///
+    /// # C-API equivalent
+    /// * `olm_inbound_group_session_is_verified`
     pub fn session_is_verified(&self) -> bool {
         0 == unsafe { olm_sys::olm_inbound_group_session_is_verified(self.group_session_ptr) }
     }
