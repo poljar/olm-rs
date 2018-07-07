@@ -55,6 +55,37 @@ impl OlmInboundGroupSession {
         }
     }
 
+    pub fn import(key: &str) -> Result<Self, OlmGroupSessionError> {
+        let olm_inbound_group_session_ptr;
+        let mut olm_inbound_group_session_buf;
+        let import_error;
+
+        unsafe {
+            olm_inbound_group_session_buf = vec![0; olm_sys::olm_inbound_group_session_size()];
+            olm_inbound_group_session_ptr = olm_sys::olm_inbound_group_session(
+                olm_inbound_group_session_buf.as_mut_ptr() as *mut _,
+            );
+
+            let key_buf = key.as_bytes();
+            let key_ptr = key_buf.as_ptr() as *const _;
+
+            import_error = olm_sys::olm_import_inbound_group_session(
+                olm_inbound_group_session_ptr,
+                key_ptr,
+                key_buf.len(),
+            );
+        }
+
+        if import_error == errors::olm_error() {
+            Err(Self::last_error(olm_inbound_group_session_ptr))
+        } else {
+            Ok(OlmInboundGroupSession {
+                _group_session_buf: olm_inbound_group_session_buf,
+                group_session_ptr: olm_inbound_group_session_ptr,
+            })
+        }
+    }
+
     pub fn pickle(&self, key: &[u8]) -> String {
         let pickled_result;
         let pickle_error;
