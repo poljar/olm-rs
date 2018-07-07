@@ -46,7 +46,7 @@ impl OlmUtility {
 
         Self {
             _olm_utility_buf: olm_utility_buf,
-            olm_utility_ptr: olm_utility_ptr,
+            olm_utility_ptr,
         }
     }
 
@@ -139,8 +139,8 @@ impl OlmUtility {
                 signature.len(),
             );
 
-            // Since the two values are the same it is safe to clone
-            ed25519_verify_result = ed25519_verify_error.clone();
+            // Since the two values are the same it is safe to copy
+            ed25519_verify_result = ed25519_verify_error;
         }
 
         if ed25519_verify_error == errors::olm_error() {
@@ -162,6 +162,12 @@ impl OlmUtility {
         signature: &mut str,
     ) -> Result<bool, OlmUtilityError> {
         self.ed25519_verify_bytes(key, message.as_bytes(), unsafe { signature.as_bytes_mut() })
+    }
+}
+
+impl Default for OlmUtility {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

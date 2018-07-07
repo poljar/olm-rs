@@ -64,8 +64,8 @@ pub fn get_library_version() -> OlmVersion {
     }
 
     OlmVersion {
-        major: major,
-        minor: minor,
-        patch: patch,
+        major,
+        minor,
+        patch,
     }
 }
