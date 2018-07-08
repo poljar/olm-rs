@@ -115,6 +115,32 @@ fn one_time_keys_valid() {
 }
 
 #[test]
+fn remove_one_time_keys() {
+    let account_a = OlmAccount::new().unwrap();
+    account_a.generate_one_time_keys(1);
+
+    let account_b = OlmAccount::new().unwrap();
+    account_b.generate_one_time_keys(1);
+
+    let otks = json::parse(&account_b.one_time_keys()).unwrap();
+    let identity_keys = json::parse(&account_b.identity_keys()).unwrap();
+    let session = OlmSession::create_outbound_session(
+        &account_a,
+        &identity_keys["curve25519"].as_str().unwrap(),
+        &otks["curve25519"]["AAAAAQ"].as_str().unwrap(),
+    ).unwrap();
+
+    assert_eq!(1, otks["curve25519"].len());
+
+    account_b.remove_one_time_keys(&session).unwrap();
+
+    // empty read of one time keys after removing
+    let otks_empty = json::parse(&account_b.one_time_keys()).unwrap();
+    assert!(otks_empty["curve25519"].is_object());
+    assert!(otks_empty["curve25519"].is_empty());
+}
+
+#[test]
 fn sha256_valid() {
     let mut test_str = String::from("Hello, World!");
     let util = OlmUtility::new();
