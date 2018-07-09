@@ -127,7 +127,13 @@ fn remove_one_time_keys() {
     let session = OlmSession::create_outbound_session(
         &account_a,
         &identity_keys["curve25519"].as_str().unwrap(),
-        &otks["curve25519"]["AAAAAQ"].as_str().unwrap(),
+        &otks["curve25519"]
+            .entries()
+            .nth(0)
+            .unwrap()
+            .1
+            .as_str()
+            .unwrap(),
     ).unwrap();
 
     assert_eq!(1, otks["curve25519"].len());
@@ -138,6 +144,28 @@ fn remove_one_time_keys() {
     let otks_empty = json::parse(&account_b.one_time_keys()).unwrap();
     assert!(otks_empty["curve25519"].is_object());
     assert!(otks_empty["curve25519"].is_empty());
+}
+
+#[test]
+#[should_panic(expected = "called `Result::unwrap()` on an `Err` value: BadMessageKeyId")]
+fn remove_one_time_keys_fails() {
+    let account_a = OlmAccount::new().unwrap();
+    account_a.generate_one_time_keys(1);
+
+    let account_b = OlmAccount::new().unwrap();
+    account_b.generate_one_time_keys(1);
+
+    let otks = json::parse(&account_b.one_time_keys()).unwrap();
+    let identity_keys = json::parse(&account_b.identity_keys()).unwrap();
+    let session = OlmSession::create_outbound_session(
+        &account_a,
+        &identity_keys["curve25519"].as_str().unwrap(),
+        &otks["curve25519"]["AAAAAQ"].as_str().unwrap(),
+    ).unwrap();
+
+    assert_eq!(1, otks["curve25519"].len());
+
+    account_a.remove_one_time_keys(&session).unwrap();
 }
 
 #[test]
