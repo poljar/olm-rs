@@ -25,13 +25,10 @@ use std::ffi::CStr;
 use std::mem;
 
 /// An olm account manages all cryptographic keys used on a device.
-///
-/// OlmAccount follows the *Constructor* design pattern, so it has to be
-/// instantiated before further usage.
 /// ```
 /// use olm_rs::account::OlmAccount;
 ///
-/// let olm_account = OlmAccount::new(); // Constructor
+/// let olm_account = OlmAccount::new();
 /// println!("{}", olm_account.identity_keys());
 /// ```
 pub struct OlmAccount {
