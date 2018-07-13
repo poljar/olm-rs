@@ -25,13 +25,10 @@ use std::ffi::CStr;
 use std::mem;
 
 /// An olm account manages all cryptographic keys used on a device.
-///
-/// OlmAccount follows the *Constructor* design pattern, so it has to be
-/// instantiated before further usage.
 /// ```
 /// use olm_rs::account::OlmAccount;
 ///
-/// let mut olm_account = OlmAccount::new().unwrap(); // Constructor
+/// let olm_account = OlmAccount::new();
 /// println!("{}", olm_account.identity_keys());
 /// ```
 pub struct OlmAccount {
@@ -52,7 +49,7 @@ impl OlmAccount {
     /// # Panics
     /// * `NOT_ENOUGH_RANDOM` for OlmAccount's creation
     ///
-    pub fn new() -> Result<Self, OlmAccountError> {
+    pub fn new() -> Self {
         let olm_account_ptr;
         let mut olm_account_buf: Vec<u8>;
         let create_error;
@@ -74,12 +71,16 @@ impl OlmAccount {
         }
 
         if create_error == errors::olm_error() {
-            Err(Self::last_error(olm_account_ptr))
-        } else {
-            Ok(OlmAccount {
-                _olm_account_buf: olm_account_buf,
-                olm_account_ptr,
-            })
+            match Self::last_error(olm_account_ptr) {
+                OlmAccountError::NotEnoughRandom => {
+                    panic!("Insufficient random data for generating one time keys for OlmAccount!")
+                }
+                _ => unreachable!("olm_create_account only returns NOT_ENOUGH_RANDOM error"),
+            }
+        }
+        OlmAccount {
+            _olm_account_buf: olm_account_buf,
+            olm_account_ptr,
         }
     }
 
@@ -94,7 +95,7 @@ impl OlmAccount {
     /// use olm_rs::account::OlmAccount;
     ///
     /// let identity_keys;
-    /// let mut olm_account = OlmAccount::new().unwrap();
+    /// let olm_account = OlmAccount::new();
     /// identity_keys = olm_account.identity_keys();
     /// let pickled = olm_account.pickle(&[]);
     /// let olm_account_2 = OlmAccount::unpickle(pickled, &[]).unwrap();
@@ -413,12 +414,10 @@ impl OlmAccount {
     /// # Errors
     /// * `BAD_MESSAGE_KEY_ID` when the account doesn't hold a matching one time key
     ///
-    pub fn remove_one_time_keys(&self, session: &mut OlmSession) -> Result<(), OlmAccountError> {
-        let remove_error;
-        unsafe {
-            remove_error =
-                olm_sys::olm_remove_one_time_keys(self.olm_account_ptr, session.olm_session_ptr);
-        }
+    pub fn remove_one_time_keys(&self, session: &OlmSession) -> Result<(), OlmAccountError> {
+        let remove_error = unsafe {
+            olm_sys::olm_remove_one_time_keys(self.olm_account_ptr, session.olm_session_ptr)
+        };
 
         if remove_error == errors::olm_error() {
             Err(Self::last_error(self.olm_account_ptr))
