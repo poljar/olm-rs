@@ -69,19 +69,17 @@ fn operational_rng() {
 #[test]
 fn signatures_valid() {
     // test signature being valid base64
-    let olm_account = OlmAccount::new();
-    let mut bytes: Vec<u8> = vec![72, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 33];
-    let signature = olm_account.sign_bytes(bytes.as_mut_slice());
+    let olm_account = OlmAccount::new().unwrap();
+    let bytes = vec![72, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 33];
+    let signature = olm_account.sign_bytes(bytes.as_slice());
     assert_eq!(signature.len(), 86);
     base64::decode(&signature).unwrap();
 
     // test sign_bytes() and sign_utf8_msg() on identical input
-    let mut message = String::from("Hello world!");
-    let mut message_same = String::from("Hello world!");
-    let message_as_bytes = unsafe { message_same.as_bytes_mut() };
+    let message = String::from("Hello world!");
     assert_eq!(
-        olm_account.sign_bytes(message_as_bytes),
-        olm_account.sign_utf8_msg(message.as_mut_str())
+        olm_account.sign_bytes(message.as_bytes()),
+        olm_account.sign_utf8_msg(message.as_str())
     )
 }
 
@@ -114,6 +112,60 @@ fn one_time_keys_valid() {
     let otks_empty_json = json::parse(&otks_empty).unwrap();
     assert!(otks_empty_json["curve25519"].is_object());
     assert!(otks_empty_json["curve25519"].is_empty());
+}
+
+#[test]
+fn remove_one_time_keys() {
+    let account_a = OlmAccount::new().unwrap();
+    account_a.generate_one_time_keys(1);
+
+    let account_b = OlmAccount::new().unwrap();
+    account_b.generate_one_time_keys(1);
+
+    let otks = json::parse(&account_b.one_time_keys()).unwrap();
+    let identity_keys = json::parse(&account_b.identity_keys()).unwrap();
+    let session = OlmSession::create_outbound_session(
+        &account_a,
+        &identity_keys["curve25519"].as_str().unwrap(),
+        &otks["curve25519"]
+            .entries()
+            .nth(0)
+            .unwrap()
+            .1
+            .as_str()
+            .unwrap(),
+    ).unwrap();
+
+    assert_eq!(1, otks["curve25519"].len());
+
+    account_b.remove_one_time_keys(&session).unwrap();
+
+    // empty read of one time keys after removing
+    let otks_empty = json::parse(&account_b.one_time_keys()).unwrap();
+    assert!(otks_empty["curve25519"].is_object());
+    assert!(otks_empty["curve25519"].is_empty());
+}
+
+#[test]
+#[should_panic(expected = "called `Result::unwrap()` on an `Err` value: BadMessageKeyId")]
+fn remove_one_time_keys_fails() {
+    let account_a = OlmAccount::new().unwrap();
+    account_a.generate_one_time_keys(1);
+
+    let account_b = OlmAccount::new().unwrap();
+    account_b.generate_one_time_keys(1);
+
+    let otks = json::parse(&account_b.one_time_keys()).unwrap();
+    let identity_keys = json::parse(&account_b.identity_keys()).unwrap();
+    let session = OlmSession::create_outbound_session(
+        &account_a,
+        &identity_keys["curve25519"].as_str().unwrap(),
+        &otks["curve25519"]["AAAAAQ"].as_str().unwrap(),
+    ).unwrap();
+
+    assert_eq!(1, otks["curve25519"].len());
+
+    account_a.remove_one_time_keys(&session).unwrap();
 }
 
 #[test]
