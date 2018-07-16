@@ -5,7 +5,7 @@ authors = ["jhaye <jhaye@gmx.de>"]
 
 [dependencies]
 olm-sys = "0.1"
-ring = "0.12.1"
+ring = "0.13"
 
 [dev-dependencies]
 json = "0.11"
