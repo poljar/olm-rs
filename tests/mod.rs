@@ -69,7 +69,7 @@ fn operational_rng() {
 #[test]
 fn signatures_valid() {
     // test signature being valid base64
-    let olm_account = OlmAccount::new().unwrap();
+    let olm_account = OlmAccount::new();
     let bytes = vec![72, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 33];
     let signature = olm_account.sign_bytes(bytes.as_slice());
     assert_eq!(signature.len(), 86);
@@ -116,10 +116,10 @@ fn one_time_keys_valid() {
 
 #[test]
 fn remove_one_time_keys() {
-    let account_a = OlmAccount::new().unwrap();
+    let account_a = OlmAccount::new();
     account_a.generate_one_time_keys(1);
 
-    let account_b = OlmAccount::new().unwrap();
+    let account_b = OlmAccount::new();
     account_b.generate_one_time_keys(1);
 
     let otks = json::parse(&account_b.one_time_keys()).unwrap();
@@ -149,10 +149,10 @@ fn remove_one_time_keys() {
 #[test]
 #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: BadMessageKeyId")]
 fn remove_one_time_keys_fails() {
-    let account_a = OlmAccount::new().unwrap();
+    let account_a = OlmAccount::new();
     account_a.generate_one_time_keys(1);
 
-    let account_b = OlmAccount::new().unwrap();
+    let account_b = OlmAccount::new();
     account_b.generate_one_time_keys(1);
 
     let otks = json::parse(&account_b.one_time_keys()).unwrap();
