@@ -67,11 +67,19 @@ pub enum OlmSessionError {
     Unknown,
 }
 
+/// All errors that could be caused by an operation regarding
+/// `OlmOutboundGroupSession` and `OlmInboundGroupSession`.
+/// Errors are named exactly like the ones in libolm.
 #[derive(Debug, PartialEq)]
 pub enum OlmGroupSessionError {
     BadAccountKey,
+    BadMessageFormat,
+    BadMessageMac,
+    BadMessageVersion,
+    BadSessionKey,
     InvalidBase64,
     NotEnoughRandom,
     OutputBufferTooSmall,
+    UnknownMessageIndex,
     Unknown,
 }
