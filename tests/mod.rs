@@ -20,6 +20,8 @@ extern crate olm_rs;
 
 use olm_rs::account::OlmAccount;
 use olm_rs::errors::{OlmAccountError, OlmSessionError};
+use olm_rs::inbound_group_session::OlmInboundGroupSession;
+use olm_rs::outbound_group_session::OlmOutboundGroupSession;
 use olm_rs::session::{OlmMessageType, OlmSession};
 use olm_rs::utility::OlmUtility;
 use olm_rs::*;
@@ -266,4 +268,53 @@ fn session_pickling_fails_on_wrong_key() {
         outbound_session_bad.err(),
         Some(OlmSessionError::BadAccountKey)
     );
+}
+
+#[test]
+fn group_session_pickling_valid() {
+    let ogs = OlmOutboundGroupSession::new();
+    let ogs_id = ogs.session_id();
+    // ID is valid base64?
+    base64::decode(&ogs_id).unwrap();
+
+    // no messages have been sent yet
+    assert_eq!(0, ogs.session_message_index());
+
+    let ogs_pickled = ogs.pickle(&[]);
+    let ogs = OlmOutboundGroupSession::unpickle(&ogs_pickled, &[]).unwrap();
+    assert_eq!(ogs_id, ogs.session_id());
+
+    let igs = OlmInboundGroupSession::new(&ogs.session_key()).unwrap();
+    let igs_id = igs.session_id();
+    // ID is valid base64?
+    base64::decode(&igs_id).unwrap();
+
+    // no messages have been sent yet
+    assert_eq!(0, igs.first_known_index());
+
+    let igs_pickled = igs.pickle(&[]);
+    let igs = OlmInboundGroupSession::unpickle(&igs_pickled, &[]).unwrap();
+    assert_eq!(igs_id, igs.session_id());
+}
+
+#[test]
+/// Send message from A to B
+fn group_session_crypto_valid() {
+    let ogs = OlmOutboundGroupSession::new();
+    let igs = OlmInboundGroupSession::new(&ogs.session_key()).unwrap();
+
+    assert_eq!(ogs.session_id(), igs.session_id());
+
+    let plaintext = String::from("Hello world!");
+    let ciphertext = ogs.encrypt(plaintext);
+    // ciphertext valid base64?
+    base64::decode(&ciphertext).unwrap();
+
+    let decryption_result = igs.decrypt(ciphertext).unwrap();
+
+    // correct plaintext?
+    assert_eq!(String::from("Hello world!"), decryption_result.0);
+
+    // first message sent, so the message index is zero
+    assert_eq!(0, decryption_result.1);
 }
