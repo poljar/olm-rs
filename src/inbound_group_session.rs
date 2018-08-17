@@ -210,9 +210,14 @@ impl OlmInboundGroupSession {
 
         match error {
             "BAD_ACCOUNT_KEY" => OlmGroupSessionError::BadAccountKey,
+            "BAD_MESSAGE_FORMAT" => OlmGroupSessionError::BadMessageFormat,
+            "BAD_MESSAGE_MAC" => OlmGroupSessionError::BadMessageMac,
+            "BAD_MESSAGE_VERSION" => OlmGroupSessionError::BadMessageVersion,
+            "BAD_SESSION_KEY" => OlmGroupSessionError::BadSessionKey,
             "INVALID_BASE64" => OlmGroupSessionError::InvalidBase64,
             "NOT_ENOUGH_RANDOM" => OlmGroupSessionError::NotEnoughRandom,
             "OUTPUT_BUFFER_TOO_SMALL" => OlmGroupSessionError::OutputBufferTooSmall,
+            "UNKNOWN_MESSAGE_INDEX" => OlmGroupSessionError::UnknownMessageIndex,
             _ => OlmGroupSessionError::Unknown,
         }
     }
@@ -238,11 +243,13 @@ impl OlmInboundGroupSession {
     pub fn decrypt(&self, mut message: String) -> Result<(String, u32), OlmGroupSessionError> {
         let message_index = 0;
         let decrypt_error;
-        let plaintext_len;
         let plaintext;
 
+        // We need to clone the message because
+        // olm_decrypt_max_plaintext_length destroys the input buffer
+        let mut message_for_len = message.clone();
         unsafe {
-            let message_buf = message.as_bytes_mut();
+            let message_buf = message_for_len.as_bytes_mut();
             let message_ptr = message_buf.as_mut_ptr() as *mut _;
             let message_len = message_buf.len();
             let mut plaintext_buf: Vec<u8> = vec![
@@ -253,10 +260,13 @@ impl OlmInboundGroupSession {
                     message_len
                 )
             ];
+            let message_buf = message.as_bytes_mut();
+            let message_ptr = message_buf.as_mut_ptr() as *mut _;
+            let message_len = message_buf.len();
             let plaintext_max_len = plaintext_buf.len();
             let plaintext_ptr = plaintext_buf.as_mut_ptr() as *mut _;
 
-            plaintext_len = olm_sys::olm_group_decrypt(
+            let plaintext_len = olm_sys::olm_group_decrypt(
                 self.group_session_ptr,
                 message_ptr,
                 message_len,
@@ -265,27 +275,26 @@ impl OlmInboundGroupSession {
                 message_index as *mut _,
             );
 
+            // Error code or plaintext length is returned
+            decrypt_error = plaintext_len;
+
+            if decrypt_error == errors::olm_error() {
+                let error_code = Self::last_error(self.group_session_ptr);
+
+                if error_code == OlmGroupSessionError::OutputBufferTooSmall {
+                    panic!("Output buffer for decrypting ciphertext from group session too small!");
+                }
+
+                return Err(error_code);
+            }
+
             mem::forget(plaintext_buf);
 
             plaintext =
                 String::from_raw_parts(plaintext_ptr as *mut u8, plaintext_len, plaintext_len);
         }
 
-        // Error code or plaintext length is returned
-        decrypt_error = plaintext_len;
-
-        if decrypt_error == errors::olm_error() {
-            // TODO: extend error states for OlmGroupSessionError
-            let error_code = Self::last_error(self.group_session_ptr);
-
-            if error_code == OlmGroupSessionError::OutputBufferTooSmall {
-                panic!("Output buffer for decrypting ciphertext from group session too small!");
-            }
-
-            Err(error_code)
-        } else {
-            Ok((plaintext, message_index))
-        }
+        Ok((plaintext, message_index))
     }
 
     /// Export the base64-encoded ratchet key for this session, at the given index,
