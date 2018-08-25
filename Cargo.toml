@@ -6,6 +6,7 @@ authors = ["Johannes Hayeß <jhaye@gmx.de>"]
 description = "A Rust wrapper for libolm."
 license = "GPL-3"
 readme = "README.md"
+repository = "https://gitlab.gnome.org/jhaye/olm-rs"
 
 [dependencies]
 olm-sys = "0.1.3"
