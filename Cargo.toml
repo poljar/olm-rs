@@ -1,7 +1,11 @@
 [package]
 name = "olm-rs"
 version = "0.1.0"
-authors = ["jhaye <jhaye@gmx.de>"]
+authors = ["Johannes Hayeß <jhaye@gmx.de>"]
+
+description = "A Rust wrapper for libolm."
+license = "GPL-3"
+readme = "README.md"
 
 [dependencies]
 olm-sys = "0.1.3"
