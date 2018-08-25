@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Johannes Hayeß <jhaye@gmx.de>"]
 
 description = "A Rust wrapper for libolm."
-license = "GPL-3"
+license = "GPL-3.0"
 readme = "README.md"
 repository = "https://gitlab.gnome.org/jhaye/olm-rs"
 
