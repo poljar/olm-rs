@@ -27,7 +27,6 @@ use std::mem;
 
 /// Either an outbound or inbound session for secure communication.
 pub struct OlmSession {
-    _olm_session_buf: Vec<u8>,
     pub olm_session_ptr: *mut olm_sys::OlmSession,
 }
 
@@ -110,15 +109,15 @@ impl OlmSession {
         Self::create_session_with(|olm_session_ptr| {
             let their_identity_key_buf = their_identity_key.as_bytes();
             let their_one_time_key_buf = their_one_time_key.as_bytes();
-            unsafe {
-                let random_len =
-                    olm_sys::olm_create_outbound_session_random_length(olm_session_ptr);
-                let mut random_buf: Vec<u8> = vec![0; random_len];
-                {
-                    let rng = SystemRandom::new();
-                    rng.fill(random_buf.as_mut_slice()).unwrap();
-                }
+            let random_len =
+                unsafe { olm_sys::olm_create_outbound_session_random_length(olm_session_ptr) };
+            let mut random_buf: Vec<u8> = vec![0; random_len];
+            {
+                let rng = SystemRandom::new();
+                rng.fill(random_buf.as_mut_slice()).unwrap();
+            }
 
+            unsafe {
                 olm_sys::olm_create_outbound_session(
                     olm_session_ptr,
                     account.olm_account_ptr,
@@ -137,35 +136,27 @@ impl OlmSession {
     fn create_session_with<F: FnMut(*mut olm_sys::OlmSession) -> usize>(
         mut f: F,
     ) -> Result<OlmSession, OlmSessionError> {
-        let olm_session_ptr;
-        let mut olm_session_buf;
-        let error;
-        unsafe {
-            olm_session_buf = vec![0; olm_sys::olm_session_size()];
-            olm_session_ptr = olm_sys::olm_session(olm_session_buf.as_mut_ptr() as *mut _);
-            error = f(olm_session_ptr);
-        }
+        let mut olm_session_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_session_size() }];
+        let olm_session_buf_ptr = olm_session_buf.as_mut_ptr() as *mut _;
+        mem::forget(olm_session_buf);
+
+        let olm_session_ptr = unsafe { olm_sys::olm_session(olm_session_buf_ptr) };
+        let error = f(olm_session_ptr);
         if error == errors::olm_error() {
             if Self::last_error(olm_session_ptr) == OlmSessionError::NotEnoughRandom {
                 panic!("Not enough random data supplied for creation of outbound session!");
             }
             Err(Self::last_error(olm_session_ptr))
         } else {
-            Ok(OlmSession {
-                _olm_session_buf: olm_session_buf,
-                olm_session_ptr,
-            })
+            Ok(OlmSession { olm_session_ptr })
         }
     }
 
     /// Gives you the last error encountered by the `OlmSession` given as an argument.
     fn last_error(session_ptr: *mut olm_sys::OlmSession) -> OlmSessionError {
-        let error;
         // get CString error code and convert to String
-        unsafe {
-            let error_raw = olm_sys::olm_session_last_error(session_ptr);
-            error = CStr::from_ptr(error_raw).to_str().unwrap();
-        }
+        let error_raw = unsafe { olm_sys::olm_session_last_error(session_ptr) };
+        let error = unsafe { CStr::from_ptr(error_raw).to_str().unwrap() };
 
         match error {
             "BAD_ACCOUNT_KEY" => OlmSessionError::BadAccountKey,
@@ -189,21 +180,19 @@ impl OlmSession {
     /// * `OutputBufferTooSmall` if the supplied output buffer for the ID was too small
     ///
     pub fn session_id(&self) -> String {
-        let session_id_result;
-        let error;
+        let session_id_len = unsafe { olm_sys::olm_session_id_length(self.olm_session_ptr) };
+        let mut session_id_buf: Vec<u8> = vec![0; session_id_len];
+        let session_id_ptr = session_id_buf.as_mut_ptr() as *mut _;
 
-        unsafe {
-            let session_id_len = olm_sys::olm_session_id_length(self.olm_session_ptr);
-            let mut session_id_buf: Vec<u8> = vec![0; session_id_len];
-            let session_id_ptr = session_id_buf.as_mut_ptr() as *mut _;
+        let error = unsafe {
+            olm_sys::olm_session_id(self.olm_session_ptr, session_id_ptr, session_id_len)
+        };
 
-            error = olm_sys::olm_session_id(self.olm_session_ptr, session_id_ptr, session_id_len);
+        mem::forget(session_id_buf);
 
-            mem::forget(session_id_buf);
-
-            session_id_result =
-                String::from_raw_parts(session_id_ptr as *mut u8, session_id_len, session_id_len);
-        }
+        let session_id_result = unsafe {
+            String::from_raw_parts(session_id_ptr as *mut u8, session_id_len, session_id_len)
+        };
 
         if error == errors::olm_error() {
             match Self::last_error(self.olm_session_ptr) {
@@ -227,27 +216,24 @@ impl OlmSession {
     /// * `OUTPUT_BUFFER_TOO_SMALL` for OlmSession's pickled buffer
     ///
     pub fn pickle(&self, key: &[u8]) -> String {
-        let pickled_result;
-        let pickle_error;
+        let pickled_len = unsafe { olm_sys::olm_pickle_session_length(self.olm_session_ptr) };
+        let mut pickled_buf = vec![0; pickled_len];
+        let pickled_ptr = pickled_buf.as_mut_ptr() as *mut _;
 
-        unsafe {
-            let pickled_len = olm_sys::olm_pickle_session_length(self.olm_session_ptr);
-            let mut pickled_buf = vec![0; pickled_len];
-            let pickled_ptr = pickled_buf.as_mut_ptr() as *mut _;
-
-            pickle_error = olm_sys::olm_pickle_session(
+        let pickle_error = unsafe {
+            olm_sys::olm_pickle_session(
                 self.olm_session_ptr,
                 key.as_ptr() as *const _,
                 key.len(),
                 pickled_ptr,
                 pickled_len,
-            );
+            )
+        };
 
-            mem::forget(pickled_buf);
+        mem::forget(pickled_buf);
 
-            pickled_result =
-                String::from_raw_parts(pickled_ptr as *mut u8, pickled_len, pickled_len);
-        }
+        let pickled_result =
+            unsafe { String::from_raw_parts(pickled_ptr as *mut u8, pickled_len, pickled_len) };
 
         if pickle_error == errors::olm_error() {
             match Self::last_error(self.olm_session_ptr) {
@@ -271,17 +257,19 @@ impl OlmSession {
     /// * `InvalidBase64` if decoding the supplied `pickled` string slice fails
     ///
     pub fn unpickle(mut pickled: String, key: &[u8]) -> Result<Self, OlmSessionError> {
-        Self::create_session_with(|olm_session_ptr| unsafe {
+        Self::create_session_with(|olm_session_ptr| {
             let pickled_len = pickled.len();
-            let pickled_buf = pickled.as_bytes_mut();
+            unsafe {
+                let pickled_buf = pickled.as_bytes_mut();
 
-            olm_sys::olm_unpickle_session(
-                olm_session_ptr,
-                key.as_ptr() as *const _,
-                key.len(),
-                pickled_buf.as_mut_ptr() as *mut _,
-                pickled_len,
-            )
+                olm_sys::olm_unpickle_session(
+                    olm_session_ptr,
+                    key.as_ptr() as *const _,
+                    key.len(),
+                    pickled_buf.as_mut_ptr() as *mut _,
+                    pickled_len,
+                )
+            }
         })
     }
 
@@ -295,25 +283,22 @@ impl OlmSession {
     /// * `OutputBufferTooSmall` for encrypted message
     ///
     pub fn encrypt(&self, plaintext: &str) -> String {
-        let encrypt_error;
-        let message_result;
+        let plaintext_buf = plaintext.as_bytes();
+        let plaintext_len = plaintext_buf.len();
+        let message_len =
+            unsafe { olm_sys::olm_encrypt_message_length(self.olm_session_ptr, plaintext_len) };
+        let mut message_buf: Vec<u8> = vec![0; message_len];
+        let message_ptr = message_buf.as_mut_ptr() as *mut _;
 
-        unsafe {
-            let plaintext_buf = plaintext.as_bytes();
-            let plaintext_len = plaintext_buf.len();
-            let message_len =
-                olm_sys::olm_encrypt_message_length(self.olm_session_ptr, plaintext_len);
-            let mut message_buf: Vec<u8> = vec![0; message_len];
-            let message_ptr = message_buf.as_mut_ptr() as *mut _;
+        let random_len = unsafe { olm_sys::olm_encrypt_random_length(self.olm_session_ptr) };
+        let mut random_buf: Vec<u8> = vec![0; random_len];
+        {
+            let rng = SystemRandom::new();
+            rng.fill(random_buf.as_mut_slice()).unwrap();
+        }
 
-            let random_len = olm_sys::olm_encrypt_random_length(self.olm_session_ptr);
-            let mut random_buf: Vec<u8> = vec![0; random_len];
-            {
-                let rng = SystemRandom::new();
-                rng.fill(random_buf.as_mut_slice()).unwrap();
-            }
-
-            encrypt_error = olm_sys::olm_encrypt(
+        let encrypt_error = unsafe {
+            olm_sys::olm_encrypt(
                 self.olm_session_ptr,
                 plaintext_buf.as_ptr() as *const _,
                 plaintext_len,
@@ -321,13 +306,13 @@ impl OlmSession {
                 random_len,
                 message_ptr,
                 message_len,
-            );
+            )
+        };
 
-            mem::forget(message_buf);
+        mem::forget(message_buf);
 
-            message_result =
-                String::from_raw_parts(message_ptr as *mut u8, message_len, message_len);
-        }
+        let message_result =
+            unsafe { String::from_raw_parts(message_ptr as *mut u8, message_len, message_len) };
 
         if encrypt_error == errors::olm_error() {
             match Self::last_error(self.olm_session_ptr) {
@@ -363,10 +348,6 @@ impl OlmSession {
         message_type: OlmMessageType,
         mut message: String,
     ) -> Result<String, OlmSessionError> {
-        let decrypt_error;
-        let plaintext_result;
-        let plaintext_result_len;
-
         // get the usize value associated with the supplied message type
         let message_type_val = match message_type {
             OlmMessageType::PreKey => olm_sys::OLM_MESSAGE_TYPE_PRE_KEY,
@@ -376,53 +357,57 @@ impl OlmSession {
         // We need to clone the message because
         // olm_decrypt_max_plaintext_length destroys the input buffer
         let mut message_for_len = message.clone();
-        unsafe {
-            let message_buf = message_for_len.as_bytes_mut();
-            let message_len = message_buf.len();
-            let message_ptr = message_buf.as_mut_ptr() as *mut _;
+        let message_buf = unsafe { message_for_len.as_bytes_mut() };
+        let message_len = message_buf.len();
+        let message_ptr = message_buf.as_mut_ptr() as *mut _;
 
-            let plaintext_max_len = olm_sys::olm_decrypt_max_plaintext_length(
+        let plaintext_max_len = unsafe {
+            olm_sys::olm_decrypt_max_plaintext_length(
                 self.olm_session_ptr,
                 message_type_val,
                 message_ptr,
                 message_len,
-            );
-            if plaintext_max_len == errors::olm_error() {
-                return Err(Self::last_error(self.olm_session_ptr));
-            }
+            )
+        };
+        if plaintext_max_len == errors::olm_error() {
+            return Err(Self::last_error(self.olm_session_ptr));
+        }
 
-            let mut plaintext_buf: Vec<u8> = vec![0; plaintext_max_len];
-            let plaintext_ptr = plaintext_buf.as_mut_ptr() as *mut _;
+        let mut plaintext_buf: Vec<u8> = vec![0; plaintext_max_len];
+        let plaintext_ptr = plaintext_buf.as_mut_ptr() as *mut _;
 
-            let message_buf = message.as_bytes_mut();
-            let message_len = message_buf.len();
-            let message_ptr = message_buf.as_mut_ptr() as *mut _;
+        let message_buf = unsafe { message.as_bytes_mut() };
+        let message_len = message_buf.len();
+        let message_ptr = message_buf.as_mut_ptr() as *mut _;
 
-            plaintext_result_len = olm_sys::olm_decrypt(
+        let plaintext_result_len = unsafe {
+            olm_sys::olm_decrypt(
                 self.olm_session_ptr,
                 message_type_val,
                 message_ptr,
                 message_len,
                 plaintext_ptr,
                 plaintext_max_len,
-            );
+            )
+        };
 
-            decrypt_error = plaintext_result_len;
-            if decrypt_error == errors::olm_error() {
-                if Self::last_error(self.olm_session_ptr) == OlmSessionError::OutputBufferTooSmall {
-                    panic!("Output buffer for plaintext is too small when decrypting!");
-                }
-                return Err(Self::last_error(self.olm_session_ptr));
+        let decrypt_error = plaintext_result_len;
+        if decrypt_error == errors::olm_error() {
+            if Self::last_error(self.olm_session_ptr) == OlmSessionError::OutputBufferTooSmall {
+                panic!("Output buffer for plaintext is too small when decrypting!");
             }
+            return Err(Self::last_error(self.olm_session_ptr));
+        }
 
-            mem::forget(plaintext_buf);
+        mem::forget(plaintext_buf);
 
-            plaintext_result = String::from_raw_parts(
+        let plaintext_result = unsafe {
+            String::from_raw_parts(
                 plaintext_ptr as *mut u8,
                 plaintext_result_len,
                 plaintext_result_len,
-            );
-        }
+            )
+        };
         Ok(plaintext_result)
     }
 
@@ -436,15 +421,11 @@ impl OlmSession {
     /// what kind of error.
     ///
     pub fn encrypt_message_type(&self) -> OlmMessageType {
-        let message_type_result;
-        let message_type_error;
-
-        unsafe {
-            message_type_result = olm_sys::olm_encrypt_message_type(self.olm_session_ptr);
-        }
+        let message_type_result =
+            unsafe { olm_sys::olm_encrypt_message_type(self.olm_session_ptr) };
 
         // returns either result or error
-        message_type_error = message_type_result;
+        let message_type_error = message_type_result;
 
         if message_type_error == errors::olm_error() {
             panic!("Unknown error encoutered, when getting the next encrypted message type from an OlmSession!");
@@ -462,11 +443,8 @@ impl OlmSession {
     /// `olm_session_has_received_message`
     ///
     pub fn has_received_message(&self) -> bool {
-        let received_message;
-
-        unsafe {
-            received_message = olm_sys::olm_session_has_received_message(self.olm_session_ptr)
-        }
+        let received_message =
+            unsafe { olm_sys::olm_session_has_received_message(self.olm_session_ptr) };
 
         // to get the bool value of an int_c type, check for inequality with zero
         received_message != 0
@@ -486,20 +464,17 @@ impl OlmSession {
         &self,
         mut one_time_key_message: String,
     ) -> Result<bool, OlmSessionError> {
-        let matches_result;
-        let matches_error;
-
-        unsafe {
-            let one_time_key_message_buf = one_time_key_message.as_bytes_mut();
-            matches_result = olm_sys::olm_matches_inbound_session(
+        let one_time_key_message_buf = unsafe { one_time_key_message.as_bytes_mut() };
+        let matches_result = unsafe {
+            olm_sys::olm_matches_inbound_session(
                 self.olm_session_ptr,
                 one_time_key_message_buf.as_mut_ptr() as *mut _,
                 one_time_key_message_buf.len(),
-            );
-        }
+            )
+        };
 
         // value returned by libolm can be both result and error
-        matches_error = matches_result;
+        let matches_error = matches_result;
         if matches_error == errors::olm_error() {
             Err(OlmSession::last_error(self.olm_session_ptr))
         } else {
@@ -526,24 +501,21 @@ impl OlmSession {
         their_identity_key: &str,
         mut one_time_key_message: String,
     ) -> Result<bool, OlmSessionError> {
-        let matches_result;
-        let matches_error;
-
-        unsafe {
-            let their_identity_key_buf = their_identity_key.as_bytes();
-            let their_identity_key_ptr = their_identity_key_buf.as_ptr() as *const _;
-            let one_time_key_message_buf = one_time_key_message.as_bytes_mut();
-            matches_result = olm_sys::olm_matches_inbound_session_from(
+        let their_identity_key_buf = their_identity_key.as_bytes();
+        let their_identity_key_ptr = their_identity_key_buf.as_ptr() as *const _;
+        let one_time_key_message_buf = unsafe { one_time_key_message.as_bytes_mut() };
+        let matches_result = unsafe {
+            olm_sys::olm_matches_inbound_session_from(
                 self.olm_session_ptr,
                 their_identity_key_ptr,
                 their_identity_key_buf.len(),
                 one_time_key_message_buf.as_mut_ptr() as *mut _,
                 one_time_key_message_buf.len(),
-            );
-        }
+            )
+        };
 
         // value returned by libolm can be both result and error
-        matches_error = matches_result;
+        let matches_error = matches_result;
         if matches_error == errors::olm_error() {
             Err(OlmSession::last_error(self.olm_session_ptr))
         } else {
@@ -567,6 +539,11 @@ impl Drop for OlmSession {
     fn drop(&mut self) {
         unsafe {
             olm_sys::olm_clear_session(self.olm_session_ptr);
+            mem::drop(Vec::from_raw_parts(
+                self.olm_session_ptr,
+                0,
+                olm_sys::olm_session_size(),
+            ));
         }
     }
 }

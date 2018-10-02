@@ -23,11 +23,7 @@
 use olm_sys;
 
 pub fn olm_error() -> usize {
-    let result;
-    unsafe {
-        result = olm_sys::olm_error();
-    }
-    result
+    unsafe { olm_sys::olm_error() }
 }
 
 /// All errors that could be caused by an operation regarding an `OlmAccount`.

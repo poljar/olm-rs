@@ -32,8 +32,6 @@ use std::mem;
 /// println!("{}", olm_account.identity_keys());
 /// ```
 pub struct OlmAccount {
-    // Reserved memory buffer holding data of an OlmAccount for libolm
-    _olm_account_buf: Vec<u8>,
     // Pointer by which libolm acquires the data saved in an instance of OlmAccount
     pub olm_account_ptr: *mut olm_sys::OlmAccount,
 }
@@ -50,25 +48,27 @@ impl OlmAccount {
     /// * `NOT_ENOUGH_RANDOM` for OlmAccount's creation
     ///
     pub fn new() -> Self {
-        let olm_account_ptr;
-        let mut olm_account_buf: Vec<u8>;
-        let create_error;
-        unsafe {
-            // allocate buffer for OlmAccount to be written into
-            olm_account_buf = vec![0; olm_sys::olm_account_size()];
-            olm_account_ptr = olm_sys::olm_account(olm_account_buf.as_mut_ptr() as *mut _);
+        // allocate buffer for OlmAccount to be written into
+        let mut olm_account_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_account_size() }];
+        let olm_account_buf_ptr = olm_account_buf.as_mut_ptr() as *mut _;
+        mem::forget(olm_account_buf);
 
-            // determine optimal length of the random buffer
-            let random_len = olm_sys::olm_create_account_random_length(olm_account_ptr);
-            let mut random_buf: Vec<u8> = vec![0; random_len];
-            {
-                let rng = SystemRandom::new();
-                rng.fill(random_buf.as_mut_slice()).unwrap();
-            }
+        // let libolm populate the allocated memory
+        let olm_account_ptr = unsafe { olm_sys::olm_account(olm_account_buf_ptr) };
 
-            let random_ptr = random_buf.as_mut_ptr() as *mut _;
-            create_error = olm_sys::olm_create_account(olm_account_ptr, random_ptr, random_len);
+        // determine optimal length of the random buffer
+        let random_len = unsafe { olm_sys::olm_create_account_random_length(olm_account_ptr) };
+        let mut random_buf: Vec<u8> = vec![0; random_len];
+        {
+            let rng = SystemRandom::new();
+            rng.fill(random_buf.as_mut_slice()).unwrap();
         }
+
+        let random_ptr = random_buf.as_mut_ptr() as *mut _;
+
+        // create OlmAccount with supplied random data
+        let create_error =
+            unsafe { olm_sys::olm_create_account(olm_account_ptr, random_ptr, random_len) };
 
         if create_error == errors::olm_error() {
             match Self::last_error(olm_account_ptr) {
@@ -78,10 +78,7 @@ impl OlmAccount {
                 _ => unreachable!("olm_create_account only returns NOT_ENOUGH_RANDOM error"),
             }
         }
-        OlmAccount {
-            _olm_account_buf: olm_account_buf,
-            olm_account_ptr,
-        }
+        OlmAccount { olm_account_ptr }
     }
 
     /// Serialises an `OlmAccount` to encrypted Base64. The encryption key is free to choose
@@ -108,27 +105,25 @@ impl OlmAccount {
     /// * `OUTPUT_BUFFER_TOO_SMALL` for OlmAccount's pickled buffer
     ///
     pub fn pickle(&self, key: &[u8]) -> String {
-        let pickled_result;
-        let pickle_error;
+        let mut pickled_buf =
+            vec![0; unsafe { olm_sys::olm_pickle_account_length(self.olm_account_ptr) }];
+        let pickled_len = pickled_buf.len();
+        let pickled_ptr = pickled_buf.as_mut_ptr() as *mut _;
 
-        unsafe {
-            let mut pickled_buf = vec![0; olm_sys::olm_pickle_account_length(self.olm_account_ptr)];
-            let pickled_len = pickled_buf.len();
-            let pickled_ptr = pickled_buf.as_mut_ptr() as *mut _;
-
-            pickle_error = olm_sys::olm_pickle_account(
+        let pickle_error = unsafe {
+            olm_sys::olm_pickle_account(
                 self.olm_account_ptr,
                 key.as_ptr() as *const _,
                 key.len(),
                 pickled_ptr,
                 pickled_len,
-            );
+            )
+        };
 
-            mem::forget(pickled_buf);
+        mem::forget(pickled_buf);
 
-            pickled_result =
-                String::from_raw_parts(pickled_ptr as *mut u8, pickled_len, pickled_len);
-        }
+        let pickled_result =
+            unsafe { String::from_raw_parts(pickled_ptr as *mut u8, pickled_len, pickled_len) };
 
         if pickle_error == errors::olm_error() {
             match Self::last_error(self.olm_account_ptr) {
@@ -152,33 +147,28 @@ impl OlmAccount {
     /// * `InvalidBase64` if decoding the supplied `pickled` string slice fails
     ///
     pub fn unpickle(mut pickled: String, key: &[u8]) -> Result<Self, OlmAccountError> {
-        let olm_account_ptr;
-        let mut olm_account_buf: Vec<u8>;
-        let unpickle_error;
+        let pickled_len = pickled.len();
+        let pickled_buf = unsafe { pickled.as_bytes_mut() };
 
-        unsafe {
-            let pickled_len = pickled.len();
-            let pickled_buf = pickled.as_bytes_mut();
+        let mut olm_account_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_account_size() }];
+        let olm_account_buf_ptr = olm_account_buf.as_mut_ptr() as *mut _;
+        mem::forget(olm_account_buf);
+        let olm_account_ptr = unsafe { olm_sys::olm_account(olm_account_buf_ptr) };
 
-            olm_account_buf = vec![0; olm_sys::olm_account_size()];
-            olm_account_ptr = olm_sys::olm_account(olm_account_buf.as_mut_ptr() as *mut _);
-
-            unpickle_error = olm_sys::olm_unpickle_account(
+        let unpickle_error = unsafe {
+            olm_sys::olm_unpickle_account(
                 olm_account_ptr,
                 key.as_ptr() as *const _,
                 key.len(),
                 pickled_buf.as_mut_ptr() as *mut _,
                 pickled_len,
-            );
-        }
+            )
+        };
 
         if unpickle_error == errors::olm_error() {
             Err(Self::last_error(olm_account_ptr))
         } else {
-            Ok(OlmAccount {
-                _olm_account_buf: olm_account_buf,
-                olm_account_ptr,
-            })
+            Ok(OlmAccount { olm_account_ptr })
         }
     }
 
@@ -191,30 +181,24 @@ impl OlmAccount {
     /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied identity keys buffer
     ///
     pub fn identity_keys(&self) -> String {
-        let identity_keys_result: String;
-        let identity_keys_error;
-        unsafe {
-            // get buffer length of identity keys
-            let keys_len = olm_sys::olm_account_identity_keys_length(self.olm_account_ptr);
-            let mut identity_keys_buf: Vec<u8> = vec![0; keys_len];
-            let identity_keys_ptr = identity_keys_buf.as_mut_ptr() as *mut _;
+        // get buffer length of identity keys
+        let keys_len = unsafe { olm_sys::olm_account_identity_keys_length(self.olm_account_ptr) };
+        let mut identity_keys_buf: Vec<u8> = vec![0; keys_len];
+        let identity_keys_ptr = identity_keys_buf.as_mut_ptr() as *mut _;
 
-            // write keys data in the keys buffer
-            identity_keys_error = olm_sys::olm_account_identity_keys(
-                self.olm_account_ptr,
-                identity_keys_ptr,
-                keys_len,
-            );
+        // write keys data in the keys buffer
+        let identity_keys_error = unsafe {
+            olm_sys::olm_account_identity_keys(self.olm_account_ptr, identity_keys_ptr, keys_len)
+        };
 
-            // To avoid a double memory free we have to forget about our buffer,
-            // since we are using the buffer's data to construct the final string below.
-            mem::forget(identity_keys_buf);
+        // To avoid a double memory free we have to forget about our buffer,
+        // since we are using the buffer's data to construct the final string below.
+        mem::forget(identity_keys_buf);
 
-            // String is constructed from the keys buffer and memory is freed after exiting the scope.
-            // No memory should be leaked.
-            identity_keys_result =
-                String::from_raw_parts(identity_keys_ptr as *mut u8, keys_len, keys_len);
-        }
+        // String is constructed from the keys buffer and memory is freed after exiting the scope.
+        // No memory should be leaked.
+        let identity_keys_result =
+            unsafe { String::from_raw_parts(identity_keys_ptr as *mut u8, keys_len, keys_len) };
 
         if identity_keys_error == errors::olm_error() {
             match Self::last_error(self.olm_account_ptr) {
@@ -258,27 +242,26 @@ impl OlmAccount {
     /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied signature buffer
     ///
     pub fn sign_bytes(&self, input_buf: &[u8]) -> String {
-        let signature_result;
-        let signature_error;
-        unsafe {
-            let input_ptr = input_buf.as_ptr() as *const _;
-            let signature_len = olm_sys::olm_account_signature_length(self.olm_account_ptr);
-            let mut signature_buf: Vec<u8> = vec![0; signature_len];
-            let signature_ptr = signature_buf.as_mut_ptr() as *mut _;
+        let input_ptr = input_buf.as_ptr() as *const _;
+        let signature_len = unsafe { olm_sys::olm_account_signature_length(self.olm_account_ptr) };
+        let mut signature_buf: Vec<u8> = vec![0; signature_len];
+        let signature_ptr = signature_buf.as_mut_ptr() as *mut _;
 
-            signature_error = olm_sys::olm_account_sign(
+        let signature_error = unsafe {
+            olm_sys::olm_account_sign(
                 self.olm_account_ptr,
                 input_ptr,
                 input_buf.len(),
                 signature_ptr,
                 signature_len,
-            );
+            )
+        };
 
-            mem::forget(signature_buf);
+        mem::forget(signature_buf);
 
-            signature_result =
-                String::from_raw_parts(signature_ptr as *mut u8, signature_len, signature_len);
-        }
+        let signature_result = unsafe {
+            String::from_raw_parts(signature_ptr as *mut u8, signature_len, signature_len)
+        };
 
         if signature_error == errors::olm_error() {
             match Self::last_error(self.olm_account_ptr) {
@@ -317,29 +300,31 @@ impl OlmAccount {
     ///
     pub fn generate_one_time_keys(&self, number_of_keys: usize) {
         let generate_error;
-        unsafe {
-            // Get correct length for the random buffer
-            let random_len = olm_sys::olm_account_generate_one_time_keys_random_length(
+        // Get correct length for the random buffer
+        let random_len = unsafe {
+            olm_sys::olm_account_generate_one_time_keys_random_length(
                 self.olm_account_ptr,
                 number_of_keys,
-            );
+            )
+        };
 
-            // Construct and populate random buffer
-            let mut random_buf: Vec<u8> = vec![0; random_len];
-            {
-                let rng = SystemRandom::new();
-                rng.fill(random_buf.as_mut_slice()).unwrap();
-            }
-            let random_ptr = random_buf.as_mut_ptr() as *mut _;
+        // Construct and populate random buffer
+        let mut random_buf: Vec<u8> = vec![0; random_len];
+        {
+            let rng = SystemRandom::new();
+            rng.fill(random_buf.as_mut_slice()).unwrap();
+        }
+        let random_ptr = random_buf.as_mut_ptr() as *mut _;
 
-            // Call function for generating one time keys
-            generate_error = olm_sys::olm_account_generate_one_time_keys(
+        // Call function for generating one time keys
+        generate_error = unsafe {
+            olm_sys::olm_account_generate_one_time_keys(
                 self.olm_account_ptr,
                 number_of_keys,
                 random_ptr,
                 random_len,
-            );
-        }
+            )
+        };
 
         if generate_error == errors::olm_error() {
             match Self::last_error(self.olm_account_ptr) {
@@ -362,26 +347,23 @@ impl OlmAccount {
     /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied one time keys buffer
     ///
     pub fn one_time_keys(&self) -> String {
-        let otks_result: String;
-        let otks_error;
-        unsafe {
-            // get buffer length of OTKs
-            let otks_len = olm_sys::olm_account_one_time_keys_length(self.olm_account_ptr);
-            let mut otks_buf: Vec<u8> = vec![0; otks_len];
-            let otks_ptr = otks_buf.as_mut_ptr() as *mut _;
+        // get buffer length of OTKs
+        let otks_len = unsafe { olm_sys::olm_account_one_time_keys_length(self.olm_account_ptr) };
+        let mut otks_buf: Vec<u8> = vec![0; otks_len];
+        let otks_ptr = otks_buf.as_mut_ptr() as *mut _;
 
-            // write OTKs data in the OTKs buffer
-            otks_error =
-                olm_sys::olm_account_one_time_keys(self.olm_account_ptr, otks_ptr, otks_len);
+        // write OTKs data in the OTKs buffer
+        let otks_error =
+            unsafe { olm_sys::olm_account_one_time_keys(self.olm_account_ptr, otks_ptr, otks_len) };
 
-            // To avoid a double memory free we have to forget about our buffer,
-            // since we are using the buffer's data to construct the final string below.
-            mem::forget(otks_buf);
+        // To avoid a double memory free we have to forget about our buffer,
+        // since we are using the buffer's data to construct the final string below.
+        mem::forget(otks_buf);
 
-            // String is constructed from the OTKs buffer and memory is freed after exiting the scope.
-            // No memory should be leaked.
-            otks_result = String::from_raw_parts(otks_ptr as *mut u8, otks_len, otks_len);
-        }
+        // String is constructed from the OTKs buffer and memory is freed after exiting the scope.
+        // No memory should be leaked.
+        let otks_result =
+            unsafe { String::from_raw_parts(otks_ptr as *mut u8, otks_len, otks_len) };
 
         if otks_error == errors::olm_error() {
             match Self::last_error(self.olm_account_ptr) {
@@ -431,6 +413,11 @@ impl Drop for OlmAccount {
     fn drop(&mut self) {
         unsafe {
             olm_sys::olm_clear_account(self.olm_account_ptr);
+            mem::drop(Vec::from_raw_parts(
+                self.olm_account_ptr,
+                0,
+                olm_sys::olm_account_size(),
+            ));
         }
     }
 }
