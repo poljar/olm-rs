@@ -147,9 +147,12 @@ impl OlmUtility {
         &self,
         key: &str,
         message: &str,
-        signature: &mut str,
+        signature: &str,
     ) -> Result<bool, OlmUtilityError> {
-        self.ed25519_verify_bytes(key, message.as_bytes(), unsafe { signature.as_bytes_mut() })
+        let mut signature_cloned = signature.to_string();
+        self.ed25519_verify_bytes(key, message.as_bytes(), unsafe {
+            signature_cloned.as_bytes_mut()
+        })
     }
 }
 
