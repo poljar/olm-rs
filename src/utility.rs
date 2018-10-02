@@ -23,7 +23,6 @@ use std::ffi::CStr;
 use std::mem;
 
 pub struct OlmUtility {
-    _olm_utility_buf: Vec<u8>,
     olm_utility_ptr: *mut olm_sys::OlmUtility,
 }
 
@@ -36,29 +35,22 @@ impl OlmUtility {
     /// `olm_utility`
     ///
     pub fn new() -> Self {
-        let olm_utility_ptr;
-        let mut olm_utility_buf: Vec<u8>;
-        unsafe {
-            // allocate the buffer for OlmUtility to be written into
-            olm_utility_buf = vec![0; olm_sys::olm_utility_size()];
-            olm_utility_ptr = olm_sys::olm_utility(olm_utility_buf.as_mut_ptr() as *mut _);
-        }
+        // allocate the buffer for OlmUtility to be written into
+        let mut olm_utility_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_utility_size() }];
+        let olm_utility_buf_ptr = olm_utility_buf.as_mut_ptr() as *mut _;
+        mem::forget(olm_utility_buf);
 
-        Self {
-            _olm_utility_buf: olm_utility_buf,
-            olm_utility_ptr,
-        }
+        let olm_utility_ptr = unsafe { olm_sys::olm_utility(olm_utility_buf_ptr) };
+
+        Self { olm_utility_ptr }
     }
 
     /// Returns the last error that occurred for an OlmUtility
     /// Since error codes are encoded as CStrings by libolm,
     /// OlmUtilityError::Unknown is returned on an unknown error code.
     fn last_error(olm_utility_ptr: *mut olm_sys::OlmUtility) -> OlmUtilityError {
-        let error;
-        unsafe {
-            let error_raw = olm_sys::olm_utility_last_error(olm_utility_ptr);
-            error = CStr::from_ptr(error_raw).to_str().unwrap();
-        }
+        let error_raw = unsafe { olm_sys::olm_utility_last_error(olm_utility_ptr) };
+        let error = unsafe { CStr::from_ptr(error_raw).to_str().unwrap() };
 
         match error {
             "BAD_MESSAGE_MAC" => OlmUtilityError::BadMessageMac,
@@ -77,25 +69,24 @@ impl OlmUtility {
     /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied output buffer
     ///
     pub fn sha256_bytes(&self, input_buf: &[u8]) -> String {
-        let sha256_result;
-        let sha256_error;
-        unsafe {
-            let output_len = olm_sys::olm_sha256_length(self.olm_utility_ptr);
-            let mut output_buf = vec![0; output_len];
-            let output_ptr = output_buf.as_mut_ptr() as *mut _;
+        let output_len = unsafe { olm_sys::olm_sha256_length(self.olm_utility_ptr) };
+        let mut output_buf = vec![0; output_len];
+        let output_ptr = output_buf.as_mut_ptr() as *mut _;
 
-            sha256_error = olm_sys::olm_sha256(
+        let sha256_error = unsafe {
+            olm_sys::olm_sha256(
                 self.olm_utility_ptr,
                 input_buf.as_ptr() as *const _,
                 input_buf.len(),
                 output_ptr,
                 output_len,
-            );
+            )
+        };
 
-            mem::forget(output_buf);
+        mem::forget(output_buf);
 
-            sha256_result = String::from_raw_parts(output_ptr as *mut u8, output_len, output_len)
-        }
+        let sha256_result =
+            unsafe { String::from_raw_parts(output_ptr as *mut u8, output_len, output_len) };
 
         // Errors from sha256 are fatal
         if sha256_error == errors::olm_error() {
@@ -125,11 +116,8 @@ impl OlmUtility {
         data_buf: &[u8],
         signature: &mut [u8],
     ) -> Result<bool, OlmUtilityError> {
-        let ed25519_verify_result: usize;
-        let ed25519_verify_error: usize;
-
-        unsafe {
-            ed25519_verify_error = olm_sys::olm_ed25519_verify(
+        let ed25519_verify_error = unsafe {
+            olm_sys::olm_ed25519_verify(
                 self.olm_utility_ptr,
                 key.as_ptr() as *const _,
                 key.len(),
@@ -137,11 +125,11 @@ impl OlmUtility {
                 data_buf.len(),
                 signature.as_mut_ptr() as *mut _,
                 signature.len(),
-            );
+            )
+        };
 
-            // Since the two values are the same it is safe to copy
-            ed25519_verify_result = ed25519_verify_error;
-        }
+        // Since the two values are the same it is safe to copy
+        let ed25519_verify_result = ed25519_verify_error;
 
         if ed25519_verify_error == errors::olm_error() {
             Err(Self::last_error(self.olm_utility_ptr))
@@ -175,6 +163,11 @@ impl Drop for OlmUtility {
     fn drop(&mut self) {
         unsafe {
             olm_sys::olm_clear_utility(self.olm_utility_ptr);
+            mem::drop(Vec::from_raw_parts(
+                self.olm_utility_ptr,
+                0,
+                olm_sys::olm_utility_size(),
+            ));
         }
     }
 }
