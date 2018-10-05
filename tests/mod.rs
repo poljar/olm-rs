@@ -293,7 +293,7 @@ fn group_session_pickling_valid() {
     assert_eq!(0, igs.first_known_index());
 
     let igs_pickled = igs.pickle(&[]);
-    let igs = OlmInboundGroupSession::unpickle(&igs_pickled, &[]).unwrap();
+    let igs = OlmInboundGroupSession::unpickle(igs_pickled, &[]).unwrap();
     assert_eq!(igs_id, igs.session_id());
 }
 

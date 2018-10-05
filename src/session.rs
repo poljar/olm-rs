@@ -23,7 +23,6 @@ use errors::OlmSessionError;
 use olm_sys;
 use ring::rand::{SecureRandom, SystemRandom};
 use std::ffi::CStr;
-use std::mem;
 
 /// Either an outbound or inbound session for secure communication.
 pub struct OlmSession {
@@ -116,8 +115,9 @@ impl OlmSession {
                 let rng = SystemRandom::new();
                 rng.fill(random_buf.as_mut_slice()).unwrap();
             }
+            let random_ptr = Box::into_raw(random_buf.into_boxed_slice());
 
-            unsafe {
+            let error = unsafe {
                 olm_sys::olm_create_outbound_session(
                     olm_session_ptr,
                     account.olm_account_ptr,
@@ -125,10 +125,15 @@ impl OlmSession {
                     their_identity_key_buf.len(),
                     their_one_time_key_buf.as_ptr() as *const _,
                     their_one_time_key_buf.len(),
-                    random_buf.as_mut_ptr() as *mut _,
-                    random_buf.len(),
+                    random_ptr as *mut _,
+                    random_len,
                 )
+            };
+            unsafe {
+                Box::from_raw(random_ptr);
             }
+
+            error
         })
     }
 
@@ -136,9 +141,8 @@ impl OlmSession {
     fn create_session_with<F: FnMut(*mut olm_sys::OlmSession) -> usize>(
         mut f: F,
     ) -> Result<OlmSession, OlmSessionError> {
-        let mut olm_session_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_session_size() }];
-        let olm_session_buf_ptr = olm_session_buf.as_mut_ptr() as *mut _;
-        mem::forget(olm_session_buf);
+        let olm_session_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_session_size() }];
+        let olm_session_buf_ptr = Box::into_raw(olm_session_buf.into_boxed_slice()) as *mut _;
 
         let olm_session_ptr = unsafe { olm_sys::olm_session(olm_session_buf_ptr) };
         let error = f(olm_session_ptr);
@@ -181,17 +185,21 @@ impl OlmSession {
     ///
     pub fn session_id(&self) -> String {
         let session_id_len = unsafe { olm_sys::olm_session_id_length(self.olm_session_ptr) };
-        let mut session_id_buf: Vec<u8> = vec![0; session_id_len];
-        let session_id_ptr = session_id_buf.as_mut_ptr() as *mut _;
+        let session_id_buf: Vec<u8> = vec![0; session_id_len];
+        let session_id_ptr = Box::into_raw(session_id_buf.into_boxed_slice());
 
         let error = unsafe {
-            olm_sys::olm_session_id(self.olm_session_ptr, session_id_ptr, session_id_len)
+            olm_sys::olm_session_id(
+                self.olm_session_ptr,
+                session_id_ptr as *mut _,
+                session_id_len,
+            )
         };
 
-        mem::forget(session_id_buf);
-
-        let session_id_result = unsafe {
-            String::from_raw_parts(session_id_ptr as *mut u8, session_id_len, session_id_len)
+        let session_id_after = unsafe { Box::from_raw(session_id_ptr) };
+        let session_id_result = match String::from_utf8(session_id_after.to_vec()) {
+            Ok(x) => x,
+            Err(_) => panic!("OlmSession's session ID isn't valid UTF-8"),
         };
 
         if error == errors::olm_error() {
@@ -217,23 +225,24 @@ impl OlmSession {
     ///
     pub fn pickle(&self, key: &[u8]) -> String {
         let pickled_len = unsafe { olm_sys::olm_pickle_session_length(self.olm_session_ptr) };
-        let mut pickled_buf = vec![0; pickled_len];
-        let pickled_ptr = pickled_buf.as_mut_ptr() as *mut _;
+        let pickled_buf = vec![0; pickled_len];
+        let pickled_ptr = Box::into_raw(pickled_buf.into_boxed_slice());
 
         let pickle_error = unsafe {
             olm_sys::olm_pickle_session(
                 self.olm_session_ptr,
                 key.as_ptr() as *const _,
                 key.len(),
-                pickled_ptr,
+                pickled_ptr as *mut _,
                 pickled_len,
             )
         };
 
-        mem::forget(pickled_buf);
-
-        let pickled_result =
-            unsafe { String::from_raw_parts(pickled_ptr as *mut u8, pickled_len, pickled_len) };
+        let pickled_after = unsafe { Box::from_raw(pickled_ptr) };
+        let pickled_result = match String::from_utf8(pickled_after.to_vec()) {
+            Ok(x) => x,
+            Err(_) => panic!("Pickling OlmSession isn't valid UTF-8"),
+        };
 
         if pickle_error == errors::olm_error() {
             match Self::last_error(self.olm_session_ptr) {
@@ -287,8 +296,8 @@ impl OlmSession {
         let plaintext_len = plaintext_buf.len();
         let message_len =
             unsafe { olm_sys::olm_encrypt_message_length(self.olm_session_ptr, plaintext_len) };
-        let mut message_buf: Vec<u8> = vec![0; message_len];
-        let message_ptr = message_buf.as_mut_ptr() as *mut _;
+        let message_buf: Vec<u8> = vec![0; message_len];
+        let message_ptr = Box::into_raw(message_buf.into_boxed_slice());
 
         let random_len = unsafe { olm_sys::olm_encrypt_random_length(self.olm_session_ptr) };
         let mut random_buf: Vec<u8> = vec![0; random_len];
@@ -296,23 +305,29 @@ impl OlmSession {
             let rng = SystemRandom::new();
             rng.fill(random_buf.as_mut_slice()).unwrap();
         }
+        let random_ptr = Box::into_raw(random_buf.into_boxed_slice());
 
         let encrypt_error = unsafe {
             olm_sys::olm_encrypt(
                 self.olm_session_ptr,
                 plaintext_buf.as_ptr() as *const _,
                 plaintext_len,
-                random_buf.as_mut_ptr() as *mut _,
+                random_ptr as *mut _,
                 random_len,
-                message_ptr,
+                message_ptr as *mut _,
                 message_len,
             )
         };
 
-        mem::forget(message_buf);
+        unsafe {
+            Box::from_raw(random_ptr);
+        }
 
-        let message_result =
-            unsafe { String::from_raw_parts(message_ptr as *mut u8, message_len, message_len) };
+        let message_after = unsafe { Box::from_raw(message_ptr) };
+        let message_result = match String::from_utf8(message_after.to_vec()) {
+            Ok(x) => x,
+            Err(_) => panic!("Ciphertext by OlmSession isn't valid UTF-8"),
+        };
 
         if encrypt_error == errors::olm_error() {
             match Self::last_error(self.olm_session_ptr) {
@@ -373,8 +388,8 @@ impl OlmSession {
             return Err(Self::last_error(self.olm_session_ptr));
         }
 
-        let mut plaintext_buf: Vec<u8> = vec![0; plaintext_max_len];
-        let plaintext_ptr = plaintext_buf.as_mut_ptr() as *mut _;
+        let plaintext_buf: Vec<u8> = vec![0; plaintext_max_len];
+        let plaintext_ptr = Box::into_raw(plaintext_buf.into_boxed_slice());
 
         let message_buf = unsafe { message.as_bytes_mut() };
         let message_len = message_buf.len();
@@ -386,7 +401,7 @@ impl OlmSession {
                 message_type_val,
                 message_ptr,
                 message_len,
-                plaintext_ptr,
+                plaintext_ptr as *mut _,
                 plaintext_max_len,
             )
         };
@@ -399,15 +414,12 @@ impl OlmSession {
             return Err(Self::last_error(self.olm_session_ptr));
         }
 
-        mem::forget(plaintext_buf);
-
-        let plaintext_result = unsafe {
-            String::from_raw_parts(
-                plaintext_ptr as *mut u8,
-                plaintext_result_len,
-                plaintext_result_len,
-            )
-        };
+        let plaintext_after = unsafe { Box::from_raw(plaintext_ptr) };
+        let plaintext_result =
+            match String::from_utf8(plaintext_after[0..plaintext_result_len].to_vec()) {
+                Ok(x) => x,
+                Err(_) => panic!("Plaintext by OlmSession isn't valid UTF-8"),
+            };
         Ok(plaintext_result)
     }
 
@@ -539,11 +551,7 @@ impl Drop for OlmSession {
     fn drop(&mut self) {
         unsafe {
             olm_sys::olm_clear_session(self.olm_session_ptr);
-            mem::drop(Vec::from_raw_parts(
-                self.olm_session_ptr,
-                0,
-                olm_sys::olm_session_size(),
-            ));
+            Box::from_raw(self.olm_session_ptr);
         }
     }
 }

@@ -22,7 +22,6 @@ use olm_sys;
 use ring::rand::{SecureRandom, SystemRandom};
 use session::OlmSession;
 use std::ffi::CStr;
-use std::mem;
 
 /// An olm account manages all cryptographic keys used on a device.
 /// ```
@@ -49,9 +48,8 @@ impl OlmAccount {
     ///
     pub fn new() -> Self {
         // allocate buffer for OlmAccount to be written into
-        let mut olm_account_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_account_size() }];
-        let olm_account_buf_ptr = olm_account_buf.as_mut_ptr() as *mut _;
-        mem::forget(olm_account_buf);
+        let olm_account_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_account_size() }];
+        let olm_account_buf_ptr = Box::into_raw(olm_account_buf.into_boxed_slice()) as *mut _;
 
         // let libolm populate the allocated memory
         let olm_account_ptr = unsafe { olm_sys::olm_account(olm_account_buf_ptr) };
@@ -63,12 +61,14 @@ impl OlmAccount {
             let rng = SystemRandom::new();
             rng.fill(random_buf.as_mut_slice()).unwrap();
         }
-
-        let random_ptr = random_buf.as_mut_ptr() as *mut _;
+        let random_ptr = Box::into_raw(random_buf.into_boxed_slice());
 
         // create OlmAccount with supplied random data
-        let create_error =
-            unsafe { olm_sys::olm_create_account(olm_account_ptr, random_ptr, random_len) };
+        let create_error = unsafe {
+            olm_sys::olm_create_account(olm_account_ptr, random_ptr as *mut _, random_len)
+        };
+
+        let _drop_random_buf: Box<[u8]> = unsafe { Box::from_raw(random_ptr as *mut _) };
 
         if create_error == errors::olm_error() {
             match Self::last_error(olm_account_ptr) {
@@ -105,25 +105,26 @@ impl OlmAccount {
     /// * `OUTPUT_BUFFER_TOO_SMALL` for OlmAccount's pickled buffer
     ///
     pub fn pickle(&self, key: &[u8]) -> String {
-        let mut pickled_buf =
+        let pickled_buf: Vec<u8> =
             vec![0; unsafe { olm_sys::olm_pickle_account_length(self.olm_account_ptr) }];
         let pickled_len = pickled_buf.len();
-        let pickled_ptr = pickled_buf.as_mut_ptr() as *mut _;
+        let pickled_ptr = Box::into_raw(pickled_buf.into_boxed_slice());
 
         let pickle_error = unsafe {
             olm_sys::olm_pickle_account(
                 self.olm_account_ptr,
                 key.as_ptr() as *const _,
                 key.len(),
-                pickled_ptr,
+                pickled_ptr as *mut _,
                 pickled_len,
             )
         };
 
-        mem::forget(pickled_buf);
-
-        let pickled_result =
-            unsafe { String::from_raw_parts(pickled_ptr as *mut u8, pickled_len, pickled_len) };
+        let pickled_after: Box<[u8]> = unsafe { Box::from_raw(pickled_ptr) };
+        let pickled_result = match String::from_utf8(pickled_after.to_vec()) {
+            Ok(x) => x,
+            Err(_) => panic!("Pickled OlmAccount isn't valid UTF-8"),
+        };
 
         if pickle_error == errors::olm_error() {
             match Self::last_error(self.olm_account_ptr) {
@@ -148,11 +149,10 @@ impl OlmAccount {
     ///
     pub fn unpickle(mut pickled: String, key: &[u8]) -> Result<Self, OlmAccountError> {
         let pickled_len = pickled.len();
-        let pickled_buf = unsafe { pickled.as_bytes_mut() };
+        let pickled_buf = Box::new(unsafe { pickled.as_bytes_mut() });
 
-        let mut olm_account_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_account_size() }];
-        let olm_account_buf_ptr = olm_account_buf.as_mut_ptr() as *mut _;
-        mem::forget(olm_account_buf);
+        let olm_account_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_account_size() }];
+        let olm_account_buf_ptr = Box::into_raw(olm_account_buf.into_boxed_slice()) as *mut _;
         let olm_account_ptr = unsafe { olm_sys::olm_account(olm_account_buf_ptr) };
 
         let unpickle_error = unsafe {
@@ -183,22 +183,25 @@ impl OlmAccount {
     pub fn identity_keys(&self) -> String {
         // get buffer length of identity keys
         let keys_len = unsafe { olm_sys::olm_account_identity_keys_length(self.olm_account_ptr) };
-        let mut identity_keys_buf: Vec<u8> = vec![0; keys_len];
-        let identity_keys_ptr = identity_keys_buf.as_mut_ptr() as *mut _;
+        let identity_keys_buf: Vec<u8> = vec![0; keys_len];
+        let identity_keys_ptr = Box::into_raw(identity_keys_buf.into_boxed_slice());
 
         // write keys data in the keys buffer
         let identity_keys_error = unsafe {
-            olm_sys::olm_account_identity_keys(self.olm_account_ptr, identity_keys_ptr, keys_len)
+            olm_sys::olm_account_identity_keys(
+                self.olm_account_ptr,
+                identity_keys_ptr as *mut _,
+                keys_len,
+            )
         };
-
-        // To avoid a double memory free we have to forget about our buffer,
-        // since we are using the buffer's data to construct the final string below.
-        mem::forget(identity_keys_buf);
 
         // String is constructed from the keys buffer and memory is freed after exiting the scope.
         // No memory should be leaked.
-        let identity_keys_result =
-            unsafe { String::from_raw_parts(identity_keys_ptr as *mut u8, keys_len, keys_len) };
+        let identity_keys_after: Box<[u8]> = unsafe { Box::from_raw(identity_keys_ptr) };
+        let identity_keys_result = match String::from_utf8(identity_keys_after.to_vec()) {
+            Ok(x) => x,
+            Err(_) => panic!("OlmAccount's identity keys aren't valid UTF-8"),
+        };
 
         if identity_keys_error == errors::olm_error() {
             match Self::last_error(self.olm_account_ptr) {
@@ -243,24 +246,25 @@ impl OlmAccount {
     ///
     pub fn sign_bytes(&self, input_buf: &[u8]) -> String {
         let input_ptr = input_buf.as_ptr() as *const _;
+
         let signature_len = unsafe { olm_sys::olm_account_signature_length(self.olm_account_ptr) };
-        let mut signature_buf: Vec<u8> = vec![0; signature_len];
-        let signature_ptr = signature_buf.as_mut_ptr() as *mut _;
+        let signature_buf: Vec<u8> = vec![0; signature_len];
+        let signature_ptr = Box::into_raw(signature_buf.into_boxed_slice());
 
         let signature_error = unsafe {
             olm_sys::olm_account_sign(
                 self.olm_account_ptr,
                 input_ptr,
                 input_buf.len(),
-                signature_ptr,
+                signature_ptr as *mut _,
                 signature_len,
             )
         };
 
-        mem::forget(signature_buf);
-
-        let signature_result = unsafe {
-            String::from_raw_parts(signature_ptr as *mut u8, signature_len, signature_len)
+        let signature_after: Box<[u8]> = unsafe { Box::from_raw(signature_ptr) };
+        let signature_result = match String::from_utf8(signature_after.into_vec()) {
+            Ok(x) => x,
+            Err(_) => panic!("Signature from OlmAccount isn't valid UTF-8"),
         };
 
         if signature_error == errors::olm_error() {
@@ -299,7 +303,6 @@ impl OlmAccount {
     /// * `NOT_ENOUGH_RANDOM` for the creation of one time keys
     ///
     pub fn generate_one_time_keys(&self, number_of_keys: usize) {
-        let generate_error;
         // Get correct length for the random buffer
         let random_len = unsafe {
             olm_sys::olm_account_generate_one_time_keys_random_length(
@@ -314,17 +317,19 @@ impl OlmAccount {
             let rng = SystemRandom::new();
             rng.fill(random_buf.as_mut_slice()).unwrap();
         }
-        let random_ptr = random_buf.as_mut_ptr() as *mut _;
+        let random_ptr = Box::into_raw(random_buf.into_boxed_slice());
 
         // Call function for generating one time keys
-        generate_error = unsafe {
+        let generate_error = unsafe {
             olm_sys::olm_account_generate_one_time_keys(
                 self.olm_account_ptr,
                 number_of_keys,
-                random_ptr,
+                random_ptr as *mut _,
                 random_len,
             )
         };
+
+        let _drop_random: Box<[u8]> = unsafe { Box::from_raw(random_ptr) };
 
         if generate_error == errors::olm_error() {
             match Self::last_error(self.olm_account_ptr) {
@@ -349,21 +354,20 @@ impl OlmAccount {
     pub fn one_time_keys(&self) -> String {
         // get buffer length of OTKs
         let otks_len = unsafe { olm_sys::olm_account_one_time_keys_length(self.olm_account_ptr) };
-        let mut otks_buf: Vec<u8> = vec![0; otks_len];
-        let otks_ptr = otks_buf.as_mut_ptr() as *mut _;
+        let otks_buf: Vec<u8> = vec![0; otks_len];
+        let otks_ptr = Box::into_raw(otks_buf.into_boxed_slice());
 
         // write OTKs data in the OTKs buffer
-        let otks_error =
-            unsafe { olm_sys::olm_account_one_time_keys(self.olm_account_ptr, otks_ptr, otks_len) };
-
-        // To avoid a double memory free we have to forget about our buffer,
-        // since we are using the buffer's data to construct the final string below.
-        mem::forget(otks_buf);
+        let otks_error = unsafe {
+            olm_sys::olm_account_one_time_keys(self.olm_account_ptr, otks_ptr as *mut _, otks_len)
+        };
 
         // String is constructed from the OTKs buffer and memory is freed after exiting the scope.
-        // No memory should be leaked.
-        let otks_result =
-            unsafe { String::from_raw_parts(otks_ptr as *mut u8, otks_len, otks_len) };
+        let otks_after: Box<[u8]> = unsafe { Box::from_raw(otks_ptr) };
+        let otks_result = match String::from_utf8(otks_after.to_vec()) {
+            Ok(x) => x,
+            Err(_) => panic!("OlmAccount's one time keys aren't valid UTF-8"),
+        };
 
         if otks_error == errors::olm_error() {
             match Self::last_error(self.olm_account_ptr) {
@@ -411,13 +415,11 @@ impl OlmAccount {
 
 impl Drop for OlmAccount {
     fn drop(&mut self) {
-        unsafe {
+        let _olm_account_buf: Box<olm_sys::OlmAccount> = unsafe {
             olm_sys::olm_clear_account(self.olm_account_ptr);
-            mem::drop(Vec::from_raw_parts(
-                self.olm_account_ptr,
-                0,
-                olm_sys::olm_account_size(),
-            ));
-        }
+            // make Rust aware of the allocated memory again,
+            // so it gets freed after going out of scope
+            Box::from_raw(self.olm_account_ptr)
+        };
     }
 }
