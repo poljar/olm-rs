@@ -20,7 +20,6 @@ use errors;
 use errors::OlmUtilityError;
 use olm_sys;
 use std::ffi::CStr;
-use std::mem;
 
 pub struct OlmUtility {
     olm_utility_ptr: *mut olm_sys::OlmUtility,
@@ -36,9 +35,8 @@ impl OlmUtility {
     ///
     pub fn new() -> Self {
         // allocate the buffer for OlmUtility to be written into
-        let mut olm_utility_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_utility_size() }];
-        let olm_utility_buf_ptr = olm_utility_buf.as_mut_ptr() as *mut _;
-        mem::forget(olm_utility_buf);
+        let olm_utility_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_utility_size() }];
+        let olm_utility_buf_ptr = Box::into_raw(olm_utility_buf.into_boxed_slice()) as *mut _;
 
         let olm_utility_ptr = unsafe { olm_sys::olm_utility(olm_utility_buf_ptr) };
 
@@ -70,23 +68,24 @@ impl OlmUtility {
     ///
     pub fn sha256_bytes(&self, input_buf: &[u8]) -> String {
         let output_len = unsafe { olm_sys::olm_sha256_length(self.olm_utility_ptr) };
-        let mut output_buf = vec![0; output_len];
-        let output_ptr = output_buf.as_mut_ptr() as *mut _;
+        let output_buf = vec![0; output_len];
+        let output_ptr = Box::into_raw(output_buf.into_boxed_slice());
 
         let sha256_error = unsafe {
             olm_sys::olm_sha256(
                 self.olm_utility_ptr,
                 input_buf.as_ptr() as *const _,
                 input_buf.len(),
-                output_ptr,
+                output_ptr as *mut _,
                 output_len,
             )
         };
 
-        mem::forget(output_buf);
-
-        let sha256_result =
-            unsafe { String::from_raw_parts(output_ptr as *mut u8, output_len, output_len) };
+        let output_after = unsafe { Box::from_raw(output_ptr) };
+        let sha256_result = match String::from_utf8(output_after.to_vec()) {
+            Ok(x) => x,
+            Err(_) => panic!("SHA256 that was genereated by OlmUtility isn't valid UTF-8"),
+        };
 
         // Errors from sha256 are fatal
         if sha256_error == errors::olm_error() {
@@ -166,11 +165,7 @@ impl Drop for OlmUtility {
     fn drop(&mut self) {
         unsafe {
             olm_sys::olm_clear_utility(self.olm_utility_ptr);
-            mem::drop(Vec::from_raw_parts(
-                self.olm_utility_ptr,
-                0,
-                olm_sys::olm_utility_size(),
-            ));
+            Box::from_raw(self.olm_utility_ptr);
         }
     }
 }

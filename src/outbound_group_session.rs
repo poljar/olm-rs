@@ -21,7 +21,6 @@ use errors::OlmGroupSessionError;
 use olm_sys;
 use ring::rand::{SecureRandom, SystemRandom};
 use std::ffi::CStr;
-use std::mem;
 
 /// An out-bound group session is responsible for encrypting outgoing
 /// communication in a Megolm session.
@@ -39,11 +38,10 @@ impl OlmOutboundGroupSession {
     /// * `NotEnoughRandom` for `OlmOutboundGroupSession`'s creation
     ///
     pub fn new() -> Self {
-        let mut olm_outbound_group_session_buf: Vec<u8> =
+        let olm_outbound_group_session_buf: Vec<u8> =
             vec![0; unsafe { olm_sys::olm_outbound_group_session_size() }];
         let olm_outbound_group_session_buf_ptr =
-            olm_outbound_group_session_buf.as_mut_ptr() as *mut _;
-        mem::forget(olm_outbound_group_session_buf);
+            Box::into_raw(olm_outbound_group_session_buf.into_boxed_slice()) as *mut _;
 
         let olm_outbound_group_session_ptr =
             unsafe { olm_sys::olm_outbound_group_session(olm_outbound_group_session_buf_ptr) };
@@ -56,15 +54,17 @@ impl OlmOutboundGroupSession {
             let rng = SystemRandom::new();
             rng.fill(random_buf.as_mut_slice()).unwrap();
         }
-        let random_ptr = random_buf.as_mut_ptr() as *mut _;
+        let random_ptr = Box::into_raw(random_buf.into_boxed_slice());
 
         let create_error = unsafe {
             olm_sys::olm_init_outbound_group_session(
                 olm_outbound_group_session_ptr,
-                random_ptr,
+                random_ptr as *mut _,
                 random_len,
             )
         };
+
+        unsafe { Box::from_raw(random_ptr) };
 
         if create_error == errors::olm_error() {
             match Self::last_error(olm_outbound_group_session_ptr) {
@@ -88,29 +88,28 @@ impl OlmOutboundGroupSession {
     /// * `OutputBufferTooSmall` for `OlmOutboundGroupSession`'s pickled buffer
     ///
     pub fn pickle(&self, key: &[u8]) -> String {
-        let mut pickled_buf = vec![
-            0;
-            unsafe {
-                olm_sys::olm_pickle_outbound_group_session_length(self.group_session_ptr)
-            }
-        ];
-        let pickled_len = pickled_buf.len();
-        let pickled_ptr = pickled_buf.as_mut_ptr() as *mut _;
+        let pickled_len =
+            unsafe { olm_sys::olm_pickle_outbound_group_session_length(self.group_session_ptr) };
+        let pickled_buf = vec![0; pickled_len];
+
+        let pickled_ptr = Box::into_raw(pickled_buf.into_boxed_slice());
 
         let pickle_error = unsafe {
             olm_sys::olm_pickle_outbound_group_session(
                 self.group_session_ptr,
                 key.as_ptr() as *const _,
                 key.len(),
-                pickled_ptr,
+                pickled_ptr as *mut _,
                 pickled_len,
             )
         };
 
-        mem::forget(pickled_buf);
+        let pickled_after = unsafe { Box::from_raw(pickled_ptr) };
 
-        let pickled_result =
-            unsafe { String::from_raw_parts(pickled_ptr as *mut u8, pickled_len, pickled_len) };
+        let pickled_result = match String::from_utf8(pickled_after.to_vec()) {
+            Ok(x) => x,
+            Err(_) => panic!("Pickled OlmOutboundGroupSession isn't valid UTF-8"),
+        };
 
         if pickle_error == errors::olm_error() {
             match Self::last_error(self.group_session_ptr) {
@@ -134,22 +133,21 @@ impl OlmOutboundGroupSession {
     /// * `InvalidBase64` if decoding the supplied `pickled` string slice fails
     ///
     pub fn unpickle(pickled: &str, key: &[u8]) -> Result<Self, OlmGroupSessionError> {
-        let unpickle_error;
         let mut pickled_cloned = pickled.clone().to_owned();
 
         let pickled_len = pickled.len();
         let pickled_buf = unsafe { pickled_cloned.as_bytes_mut() };
 
-        let mut olm_outbound_group_session_buf: Vec<u8> =
+        let olm_outbound_group_session_buf: Vec<u8> =
             vec![0; unsafe { olm_sys::olm_outbound_group_session_size() }];
         let olm_outbound_group_session_buf_ptr =
-            olm_outbound_group_session_buf.as_mut_ptr() as *mut _;
-        mem::forget(olm_outbound_group_session_buf);
+            Box::into_raw(olm_outbound_group_session_buf.into_boxed_slice());
 
-        let olm_outbound_group_session_ptr =
-            unsafe { olm_sys::olm_outbound_group_session(olm_outbound_group_session_buf_ptr) };
+        let olm_outbound_group_session_ptr = unsafe {
+            olm_sys::olm_outbound_group_session(olm_outbound_group_session_buf_ptr as *mut _)
+        };
 
-        unpickle_error = unsafe {
+        let unpickle_error = unsafe {
             olm_sys::olm_unpickle_outbound_group_session(
                 olm_outbound_group_session_ptr,
                 key.as_ptr() as *const _,
@@ -198,27 +196,28 @@ impl OlmOutboundGroupSession {
     pub fn encrypt(&self, mut plaintext: String) -> String {
         let plaintext_buf = unsafe { plaintext.as_bytes_mut() };
         let plaintext_len = plaintext_buf.len();
-        let plaintext_ptr = plaintext_buf.as_mut_ptr() as *mut u8;
+        let plaintext_ptr = plaintext_buf.as_mut_ptr() as *mut _;
         let message_max_len = unsafe {
             olm_sys::olm_group_encrypt_message_length(self.group_session_ptr, plaintext_len)
         };
         let message_buf: Vec<u8> = vec![0; message_max_len];
-        let message_ptr = message_buf.as_ptr() as *mut u8;
+        let message_ptr = Box::into_raw(message_buf.into_boxed_slice());
 
         let message_len = unsafe {
             olm_sys::olm_group_encrypt(
                 self.group_session_ptr,
                 plaintext_ptr,
                 plaintext_len,
-                message_ptr,
+                message_ptr as *mut _,
                 message_max_len,
             )
         };
 
-        mem::forget(message_buf);
-
-        let message_result =
-            unsafe { String::from_raw_parts(message_ptr, message_len, message_len) };
+        let message_after = unsafe { Box::from_raw(message_ptr) };
+        let message_result = match String::from_utf8(message_after[0..message_len].to_vec()) {
+            Ok(x) => x,
+            Err(_) => panic!("Encrypted message by OlmOutboundGroupSession isn't valid UTF-8"),
+        };
 
         // Can return both final message length or an error code
         let encrypt_error = message_len;
@@ -258,16 +257,22 @@ impl OlmOutboundGroupSession {
     pub fn session_id(&self) -> String {
         let id_max_len =
             unsafe { olm_sys::olm_outbound_group_session_id_length(self.group_session_ptr) };
-        let mut id_buf: Vec<u8> = vec![0; id_max_len];
-        let id_ptr = id_buf.as_mut_ptr() as *mut u8;
+        let id_buf: Vec<u8> = vec![0; id_max_len];
+        let id_ptr = Box::into_raw(id_buf.into_boxed_slice());
 
         let id_len = unsafe {
-            olm_sys::olm_outbound_group_session_id(self.group_session_ptr, id_ptr, id_max_len)
+            olm_sys::olm_outbound_group_session_id(
+                self.group_session_ptr as *mut _,
+                id_ptr as *mut _,
+                id_max_len,
+            )
         };
 
-        mem::forget(id_buf);
-
-        let id_result = unsafe { String::from_raw_parts(id_ptr, id_len, id_len) };
+        let id_after = unsafe { Box::from_raw(id_ptr) };
+        let id_result = match String::from_utf8(id_after.to_vec()) {
+            Ok(x) => x,
+            Err(_) => panic!("OutboundGroupSession's session ID isn't valid UTF-8"),
+        };
 
         // Can return both session id length or an error code
         let id_error = id_len;
@@ -297,16 +302,22 @@ impl OlmOutboundGroupSession {
     pub fn session_key(&self) -> String {
         let key_max_len =
             unsafe { olm_sys::olm_outbound_group_session_key_length(self.group_session_ptr) };
-        let mut key_buf: Vec<u8> = vec![0; key_max_len];
-        let key_ptr = key_buf.as_mut_ptr() as *mut u8;
+        let key_buf: Vec<u8> = vec![0; key_max_len];
+        let key_ptr = Box::into_raw(key_buf.into_boxed_slice());
 
         let key_len = unsafe {
-            olm_sys::olm_outbound_group_session_key(self.group_session_ptr, key_ptr, key_max_len)
+            olm_sys::olm_outbound_group_session_key(
+                self.group_session_ptr,
+                key_ptr as *mut _,
+                key_max_len,
+            )
         };
 
-        mem::forget(key_buf);
-
-        let key_result = unsafe { String::from_raw_parts(key_ptr, key_len, key_len) };
+        let key_after = unsafe { Box::from_raw(key_ptr) };
+        let key_result = match String::from_utf8(key_after.to_vec()) {
+            Ok(x) => x,
+            Err(_) => panic!("OutboundGroupSession's session key isn't valid UTF-8"),
+        };
 
         // Can return both session id length or an error code
         let key_error = key_len;
@@ -327,11 +338,7 @@ impl Drop for OlmOutboundGroupSession {
     fn drop(&mut self) {
         unsafe {
             olm_sys::olm_clear_outbound_group_session(self.group_session_ptr);
-            mem::drop(Vec::from_raw_parts(
-                self.group_session_ptr,
-                0,
-                olm_sys::olm_outbound_group_session_size(),
-            ));
+            Box::from_raw(self.group_session_ptr);
         }
     }
 }
