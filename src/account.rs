@@ -244,8 +244,9 @@ impl OlmAccount {
     /// # Panics
     /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied signature buffer
     ///
-    pub fn sign_bytes(&self, input_buf: &[u8]) -> String {
-        let input_ptr = input_buf.as_ptr() as *const _;
+    pub fn sign(&self, message: &str) -> String {
+        let message_buf = message.as_bytes();
+        let message_ptr = message_buf.as_ptr() as *const _;
 
         let signature_len = unsafe { olm_sys::olm_account_signature_length(self.olm_account_ptr) };
         let signature_buf: Vec<u8> = vec![0; signature_len];
@@ -254,8 +255,8 @@ impl OlmAccount {
         let signature_error = unsafe {
             olm_sys::olm_account_sign(
                 self.olm_account_ptr,
-                input_ptr,
-                input_buf.len(),
+                message_ptr,
+                message_buf.len(),
                 signature_ptr as *mut _,
                 signature_len,
             )
@@ -277,12 +278,6 @@ impl OlmAccount {
         }
 
         signature_result
-    }
-
-    /// Convenience function that converts the UTF-8 message
-    /// to bytes and then calls `sign_bytes()`, returning its output.
-    pub fn sign_utf8_msg(&self, msg: &str) -> String {
-        self.sign_bytes(msg.as_bytes())
     }
 
     /// Maximum number of one time keys that this OlmAccount can currently hold.

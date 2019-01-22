@@ -68,17 +68,16 @@ fn operational_rng() {
 fn signatures_valid() {
     // test signature being valid base64
     let olm_account = OlmAccount::new();
-    let bytes = vec![72, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 33];
-    let signature = olm_account.sign_bytes(bytes.as_slice());
-    assert_eq!(signature.len(), 86);
+    let message = "Hello world!";
+    let mut signature = olm_account.sign(message);
     base64::decode(&signature).unwrap();
 
-    // test sign_bytes() and sign_utf8_msg() on identical input
-    let message = String::from("Hello world!");
-    assert_eq!(
-        olm_account.sign_bytes(message.as_bytes()),
-        olm_account.sign_utf8_msg(message.as_str())
-    )
+    let utility = OlmUtility::new();
+    let ed25519_key_json = json::parse(&olm_account.identity_keys()).unwrap();
+    let ed25519_key = ed25519_key_json["ed25519"].as_str().unwrap();
+    assert!(utility
+        .ed25519_verify(&ed25519_key, message, &mut signature)
+        .unwrap());
 }
 
 #[test]

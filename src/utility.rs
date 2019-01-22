@@ -109,49 +109,35 @@ impl OlmUtility {
     /// # C-API equivalent
     /// `olm_ed25519_verify`
     ///
-    pub fn ed25519_verify_bytes(
+    pub fn ed25519_verify(
         &self,
         key: &str,
-        data_buf: &[u8],
-        signature: &mut [u8],
+        message: &str,
+        signature: &mut str,
     ) -> Result<bool, OlmUtilityError> {
+        let signature_bytes = unsafe { signature.as_bytes_mut() };
+        let message_bytes = message.as_bytes();
+
         let ed25519_verify_error = unsafe {
             olm_sys::olm_ed25519_verify(
                 self.olm_utility_ptr,
                 key.as_ptr() as *const _,
                 key.len(),
-                data_buf.as_ptr() as *const _,
-                data_buf.len(),
-                signature.as_mut_ptr() as *mut _,
-                signature.len(),
+                message_bytes.as_ptr() as *const _,
+                message_bytes.len(),
+                signature_bytes.as_mut_ptr() as *mut _,
+                signature_bytes.len(),
             )
         };
 
         // Since the two values are the same it is safe to copy
-        let ed25519_verify_result = ed25519_verify_error;
+        let ed25519_verify_result: usize = ed25519_verify_error;
 
         if ed25519_verify_error == errors::olm_error() {
             Err(Self::last_error(self.olm_utility_ptr))
         } else {
-            match ed25519_verify_result {
-                0 => Ok(true),
-                _ => Ok(false),
-            }
+            Ok(ed25519_verify_result == 0)
         }
-    }
-
-    /// Convenience function that converts the UTF-8 message
-    /// to bytes and calls `ed25519_verify_bytes()`, returning its output
-    pub fn ed25519_verify_utf8_msg(
-        &self,
-        key: &str,
-        message: &str,
-        signature: &str,
-    ) -> Result<bool, OlmUtilityError> {
-        let mut signature_cloned = signature.to_string();
-        self.ed25519_verify_bytes(key, message.as_bytes(), unsafe {
-            signature_cloned.as_bytes_mut()
-        })
     }
 }
 
