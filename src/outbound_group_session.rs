@@ -16,8 +16,8 @@
 
 //! This module wraps around all functions in `outbound_group_session.h`.
 
-use errors;
-use errors::OlmGroupSessionError;
+use crate::errors;
+use crate::errors::OlmGroupSessionError;
 use olm_sys;
 use ring::rand::{SecureRandom, SystemRandom};
 use std::ffi::CStr;

@@ -30,9 +30,6 @@
 //!
 //! *Panics should technically never happen however.*
 
-extern crate olm_sys;
-extern crate ring;
-
 pub mod account;
 pub mod errors;
 pub mod inbound_group_session;

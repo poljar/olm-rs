@@ -16,11 +16,11 @@
 
 //! This module wraps around all functions following the pattern `olm_account_*`.
 
-use errors;
-use errors::OlmAccountError;
+use crate::errors;
+use crate::errors::OlmAccountError;
+use crate::session::OlmSession;
 use olm_sys;
 use ring::rand::{SecureRandom, SystemRandom};
-use session::OlmSession;
 use std::ffi::CStr;
 
 /// An olm account manages all cryptographic keys used on a device.

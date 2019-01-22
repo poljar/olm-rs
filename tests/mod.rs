@@ -14,10 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate base64;
-extern crate json;
-extern crate olm_rs;
-
 use olm_rs::account::OlmAccount;
 use olm_rs::errors::{OlmAccountError, OlmSessionError};
 use olm_rs::inbound_group_session::OlmInboundGroupSession;
@@ -136,7 +132,8 @@ fn remove_one_time_keys() {
             .1
             .as_str()
             .unwrap(),
-    ).unwrap();
+    )
+    .unwrap();
 
     assert_eq!(1, otks["curve25519"].len());
 
@@ -163,7 +160,8 @@ fn remove_one_time_keys_fails() {
         &account_a,
         &identity_keys["curve25519"].as_str().unwrap(),
         &otks["curve25519"]["AAAAAQ"].as_str().unwrap(),
-    ).unwrap();
+    )
+    .unwrap();
 
     assert_eq!(1, otks["curve25519"].len());
 

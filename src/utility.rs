@@ -16,8 +16,8 @@
 
 //! This module wraps around all functions following the pattern `olm_utility_*`.
 
-use errors;
-use errors::OlmUtilityError;
+use crate::errors;
+use crate::errors::OlmUtilityError;
 use olm_sys;
 use std::ffi::CStr;
 

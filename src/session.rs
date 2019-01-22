@@ -17,9 +17,9 @@
 //! This module wraps around all functions following the pattern `olm_session_*`,
 //! as well as functions for encryption and decryption using the Double Ratchet algorithm.
 
-use account::OlmAccount;
-use errors;
-use errors::OlmSessionError;
+use crate::account::OlmAccount;
+use crate::errors;
+use crate::errors::OlmSessionError;
 use olm_sys;
 use ring::rand::{SecureRandom, SystemRandom};
 use std::ffi::CStr;
