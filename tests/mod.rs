@@ -278,7 +278,7 @@ fn group_session_pickling_valid() {
     assert_eq!(0, ogs.session_message_index());
 
     let ogs_pickled = ogs.pickle(&[]);
-    let ogs = OlmOutboundGroupSession::unpickle(&ogs_pickled, &[]).unwrap();
+    let ogs = OlmOutboundGroupSession::unpickle(ogs_pickled, &[]).unwrap();
     assert_eq!(ogs_id, ogs.session_id());
 
     let igs = OlmInboundGroupSession::new(&ogs.session_key()).unwrap();

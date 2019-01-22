@@ -131,10 +131,8 @@ impl OlmInboundGroupSession {
         };
 
         let pickled_after: Box<[u8]> = unsafe { Box::from_raw(pickled_ptr) };
-        let pickled_result = match String::from_utf8(pickled_after.to_vec()) {
-            Ok(x) => x,
-            Err(_) => panic!("Pickled InboundGroupSession isn't valid UTF-8"),
-        };
+        let pickled_result = String::from_utf8(pickled_after.to_vec())
+            .expect("Pickled InboundGroupSession isn't valid UTF-8");
 
         if pickle_error == errors::olm_error() {
             match Self::last_error(self.group_session_ptr) {
@@ -280,10 +278,8 @@ impl OlmInboundGroupSession {
         }
 
         let plaintext_after = unsafe { Box::from_raw(plaintext_ptr) };
-        let plaintext = match String::from_utf8(plaintext_after[0..plaintext_len].to_vec()) {
-            Ok(x) => x,
-            Err(_) => panic!("Decrypted plaintext for InboundGroupSession isn't valid UTF-8"),
-        };
+        let plaintext = String::from_utf8(plaintext_after[0..plaintext_len].to_vec())
+            .expect("Decrypted plaintext for InboundGroupSession isn't valid UTF-8");
         Ok((plaintext, message_index))
     }
 
@@ -316,10 +312,8 @@ impl OlmInboundGroupSession {
         };
 
         let key_after = unsafe { Box::from_raw(key_ptr) };
-        let export_result = match String::from_utf8(key_after.to_vec()) {
-            Ok(x) => x,
-            Err(_) => panic!("InboundGroupSession's export isn't valid UTF-8"),
-        };
+        let export_result = String::from_utf8(key_after.to_vec())
+            .expect("InboundGroupSession's export isn't valid UTF-8");
 
         if export_error == errors::olm_error() {
             let error_code = Self::last_error(self.group_session_ptr);
@@ -365,10 +359,8 @@ impl OlmInboundGroupSession {
         };
 
         let session_id_after = unsafe { Box::from_raw(session_id_ptr) };
-        let session_id_result = match String::from_utf8(session_id_after.to_vec()) {
-            Ok(x) => x,
-            Err(_) => panic!("InboundGroupSession's session ID isn't valid UTF-8"),
-        };
+        let session_id_result = String::from_utf8(session_id_after.to_vec())
+            .expect("InboundGroupSession's session ID isn't valid UTF-8");
 
         if session_id_error == errors::olm_error() {
             match Self::last_error(self.group_session_ptr) {

@@ -121,10 +121,8 @@ impl OlmAccount {
         };
 
         let pickled_after: Box<[u8]> = unsafe { Box::from_raw(pickled_ptr) };
-        let pickled_result = match String::from_utf8(pickled_after.to_vec()) {
-            Ok(x) => x,
-            Err(_) => panic!("Pickled OlmAccount isn't valid UTF-8"),
-        };
+        let pickled_result = String::from_utf8(pickled_after.to_vec())
+            .expect("Pickled OlmAccount isn't valid UTF-8");
 
         if pickle_error == errors::olm_error() {
             match Self::last_error(self.olm_account_ptr) {
@@ -198,10 +196,8 @@ impl OlmAccount {
         // String is constructed from the keys buffer and memory is freed after exiting the scope.
         // No memory should be leaked.
         let identity_keys_after: Box<[u8]> = unsafe { Box::from_raw(identity_keys_ptr) };
-        let identity_keys_result = match String::from_utf8(identity_keys_after.to_vec()) {
-            Ok(x) => x,
-            Err(_) => panic!("OlmAccount's identity keys aren't valid UTF-8"),
-        };
+        let identity_keys_result = String::from_utf8(identity_keys_after.to_vec())
+            .expect("OlmAccount's identity keys aren't valid UTF-8");
 
         if identity_keys_error == errors::olm_error() {
             match Self::last_error(self.olm_account_ptr) {
@@ -263,10 +259,8 @@ impl OlmAccount {
         };
 
         let signature_after: Box<[u8]> = unsafe { Box::from_raw(signature_ptr) };
-        let signature_result = match String::from_utf8(signature_after.into_vec()) {
-            Ok(x) => x,
-            Err(_) => panic!("Signature from OlmAccount isn't valid UTF-8"),
-        };
+        let signature_result = String::from_utf8(signature_after.into_vec())
+            .expect("Signature from OlmAccount isn't valid UTF-8");
 
         if signature_error == errors::olm_error() {
             match Self::last_error(self.olm_account_ptr) {
@@ -359,10 +353,8 @@ impl OlmAccount {
 
         // String is constructed from the OTKs buffer and memory is freed after exiting the scope.
         let otks_after: Box<[u8]> = unsafe { Box::from_raw(otks_ptr) };
-        let otks_result = match String::from_utf8(otks_after.to_vec()) {
-            Ok(x) => x,
-            Err(_) => panic!("OlmAccount's one time keys aren't valid UTF-8"),
-        };
+        let otks_result = String::from_utf8(otks_after.to_vec())
+            .expect("OlmAccount's one time keys aren't valid UTF-8");
 
         if otks_error == errors::olm_error() {
             match Self::last_error(self.olm_account_ptr) {
@@ -405,6 +397,12 @@ impl OlmAccount {
         } else {
             Ok(())
         }
+    }
+}
+
+impl Default for OlmAccount {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

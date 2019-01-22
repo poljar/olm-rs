@@ -197,10 +197,8 @@ impl OlmSession {
         };
 
         let session_id_after = unsafe { Box::from_raw(session_id_ptr) };
-        let session_id_result = match String::from_utf8(session_id_after.to_vec()) {
-            Ok(x) => x,
-            Err(_) => panic!("OlmSession's session ID isn't valid UTF-8"),
-        };
+        let session_id_result = String::from_utf8(session_id_after.to_vec())
+            .expect("OlmSession's session ID isn't valid UTF-8");
 
         if error == errors::olm_error() {
             match Self::last_error(self.olm_session_ptr) {
@@ -239,10 +237,8 @@ impl OlmSession {
         };
 
         let pickled_after = unsafe { Box::from_raw(pickled_ptr) };
-        let pickled_result = match String::from_utf8(pickled_after.to_vec()) {
-            Ok(x) => x,
-            Err(_) => panic!("Pickling OlmSession isn't valid UTF-8"),
-        };
+        let pickled_result = String::from_utf8(pickled_after.to_vec())
+            .expect("Pickling OlmSession isn't valid UTF-8");
 
         if pickle_error == errors::olm_error() {
             match Self::last_error(self.olm_session_ptr) {
@@ -324,10 +320,8 @@ impl OlmSession {
         }
 
         let message_after = unsafe { Box::from_raw(message_ptr) };
-        let message_result = match String::from_utf8(message_after.to_vec()) {
-            Ok(x) => x,
-            Err(_) => panic!("Ciphertext by OlmSession isn't valid UTF-8"),
-        };
+        let message_result = String::from_utf8(message_after.to_vec())
+            .expect("Ciphertext by OlmSession isn't valid UTF-8");
 
         if encrypt_error == errors::olm_error() {
             match Self::last_error(self.olm_session_ptr) {
@@ -415,11 +409,8 @@ impl OlmSession {
         }
 
         let plaintext_after = unsafe { Box::from_raw(plaintext_ptr) };
-        let plaintext_result =
-            match String::from_utf8(plaintext_after[0..plaintext_result_len].to_vec()) {
-                Ok(x) => x,
-                Err(_) => panic!("Plaintext by OlmSession isn't valid UTF-8"),
-            };
+        let plaintext_result = String::from_utf8(plaintext_after[0..plaintext_result_len].to_vec())
+            .expect("Plaintext by OlmSession isn't valid UTF-8");
         Ok(plaintext_result)
     }
 

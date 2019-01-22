@@ -82,10 +82,8 @@ impl OlmUtility {
         };
 
         let output_after = unsafe { Box::from_raw(output_ptr) };
-        let sha256_result = match String::from_utf8(output_after.to_vec()) {
-            Ok(x) => x,
-            Err(_) => panic!("SHA256 that was genereated by OlmUtility isn't valid UTF-8"),
-        };
+        let sha256_result = String::from_utf8(output_after.to_vec())
+            .expect("SHA256 that was genereated by OlmUtility isn't valid UTF-8");
 
         // Errors from sha256 are fatal
         if sha256_error == errors::olm_error() {

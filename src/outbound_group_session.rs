@@ -106,10 +106,8 @@ impl OlmOutboundGroupSession {
 
         let pickled_after = unsafe { Box::from_raw(pickled_ptr) };
 
-        let pickled_result = match String::from_utf8(pickled_after.to_vec()) {
-            Ok(x) => x,
-            Err(_) => panic!("Pickled OlmOutboundGroupSession isn't valid UTF-8"),
-        };
+        let pickled_result = String::from_utf8(pickled_after.to_vec())
+            .expect("Pickled OlmOutboundGroupSession isn't valid UTF-8");
 
         if pickle_error == errors::olm_error() {
             match Self::last_error(self.group_session_ptr) {
@@ -132,11 +130,9 @@ impl OlmOutboundGroupSession {
     /// * `BadAccountKey` if the key doesn't match the one the session was encrypted with
     /// * `InvalidBase64` if decoding the supplied `pickled` string slice fails
     ///
-    pub fn unpickle(pickled: &str, key: &[u8]) -> Result<Self, OlmGroupSessionError> {
-        let mut pickled_cloned = pickled.clone().to_owned();
-
+    pub fn unpickle(mut pickled: String, key: &[u8]) -> Result<Self, OlmGroupSessionError> {
         let pickled_len = pickled.len();
-        let pickled_buf = unsafe { pickled_cloned.as_bytes_mut() };
+        let pickled_buf = unsafe { pickled.as_bytes_mut() };
 
         let olm_outbound_group_session_buf: Vec<u8> =
             vec![0; unsafe { olm_sys::olm_outbound_group_session_size() }];
@@ -214,10 +210,8 @@ impl OlmOutboundGroupSession {
         };
 
         let message_after = unsafe { Box::from_raw(message_ptr) };
-        let message_result = match String::from_utf8(message_after[0..message_len].to_vec()) {
-            Ok(x) => x,
-            Err(_) => panic!("Encrypted message by OlmOutboundGroupSession isn't valid UTF-8"),
-        };
+        let message_result = String::from_utf8(message_after[0..message_len].to_vec())
+            .expect("Encrypted message by OlmOutboundGroupSession isn't valid UTF-8");
 
         // Can return both final message length or an error code
         let encrypt_error = message_len;
@@ -269,10 +263,8 @@ impl OlmOutboundGroupSession {
         };
 
         let id_after = unsafe { Box::from_raw(id_ptr) };
-        let id_result = match String::from_utf8(id_after.to_vec()) {
-            Ok(x) => x,
-            Err(_) => panic!("OutboundGroupSession's session ID isn't valid UTF-8"),
-        };
+        let id_result = String::from_utf8(id_after.to_vec())
+            .expect("OutboundGroupSession's session ID isn't valid UTF-8");
 
         // Can return both session id length or an error code
         let id_error = id_len;
@@ -314,10 +306,8 @@ impl OlmOutboundGroupSession {
         };
 
         let key_after = unsafe { Box::from_raw(key_ptr) };
-        let key_result = match String::from_utf8(key_after.to_vec()) {
-            Ok(x) => x,
-            Err(_) => panic!("OutboundGroupSession's session key isn't valid UTF-8"),
-        };
+        let key_result = String::from_utf8(key_after.to_vec())
+            .expect("OutboundGroupSession's session key isn't valid UTF-8");
 
         // Can return both session id length or an error code
         let key_error = key_len;
@@ -331,6 +321,12 @@ impl OlmOutboundGroupSession {
         }
 
         key_result
+    }
+}
+
+impl Default for OlmOutboundGroupSession {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
