@@ -19,8 +19,8 @@
 use crate::errors;
 use crate::errors::OlmGroupSessionError;
 use crate::PicklingMode;
+use getrandom::getrandom;
 use olm_sys;
-use ring::rand::{SecureRandom, SystemRandom};
 use std::ffi::CStr;
 
 /// An out-bound group session is responsible for encrypting outgoing
@@ -51,10 +51,7 @@ impl OlmOutboundGroupSession {
             olm_sys::olm_init_outbound_group_session_random_length(olm_outbound_group_session_ptr)
         };
         let mut random_buf: Vec<u8> = vec![0; random_len];
-        {
-            let rng = SystemRandom::new();
-            rng.fill(random_buf.as_mut_slice()).unwrap();
-        }
+        let _ = getrandom(random_buf.as_mut_slice());
         let random_ptr = Box::into_raw(random_buf.into_boxed_slice());
 
         let create_error = unsafe {
