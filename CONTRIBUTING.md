@@ -17,4 +17,4 @@ Before filing a merge request, make sure of the following things:
 
 If you added functionality that is currently not coverd by unit tests, it would be highly appreciated if you could implemented the according test cases.
 
-Alternatively you can submit patches via email. Send your patches to `jhaye[at]gmx.de`.
+Alternatively you can submit patches via email. Send your patches and questions to `jhaye[at]mailbox.org`.
