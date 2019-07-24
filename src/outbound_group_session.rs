@@ -18,6 +18,7 @@
 
 use crate::errors;
 use crate::errors::OlmGroupSessionError;
+use crate::PicklingMode;
 use olm_sys;
 use ring::rand::{SecureRandom, SystemRandom};
 use std::ffi::CStr;
@@ -78,8 +79,7 @@ impl OlmOutboundGroupSession {
         }
     }
 
-    /// Serialises an `OlmOutboundGroupSession` to encrypted Base64. The encryption key is free to choose
-    /// (empty byte slice is allowed).
+    /// Serialises an `OlmOutboundGroupSession` to encrypted Base64.
     ///
     /// # C-API equivalent
     /// `olm_pickle_outbound_group_session`
@@ -87,12 +87,14 @@ impl OlmOutboundGroupSession {
     /// # Panics
     /// * `OutputBufferTooSmall` for `OlmOutboundGroupSession`'s pickled buffer
     ///
-    pub fn pickle(&self, key: &[u8]) -> String {
+    pub fn pickle(&self, mode: PicklingMode) -> String {
         let pickled_len =
             unsafe { olm_sys::olm_pickle_outbound_group_session_length(self.group_session_ptr) };
         let pickled_buf = vec![0; pickled_len];
 
         let pickled_ptr = Box::into_raw(pickled_buf.into_boxed_slice());
+
+        let key = crate::convert_pickling_mode_to_key(mode);
 
         let pickle_error = unsafe {
             olm_sys::olm_pickle_outbound_group_session(
@@ -130,7 +132,7 @@ impl OlmOutboundGroupSession {
     /// * `BadAccountKey` if the key doesn't match the one the session was encrypted with
     /// * `InvalidBase64` if decoding the supplied `pickled` string slice fails
     ///
-    pub fn unpickle(mut pickled: String, key: &[u8]) -> Result<Self, OlmGroupSessionError> {
+    pub fn unpickle(mut pickled: String, mode: PicklingMode) -> Result<Self, OlmGroupSessionError> {
         let pickled_len = pickled.len();
         let pickled_buf = unsafe { pickled.as_bytes_mut() };
 
@@ -142,6 +144,8 @@ impl OlmOutboundGroupSession {
         let olm_outbound_group_session_ptr = unsafe {
             olm_sys::olm_outbound_group_session(olm_outbound_group_session_buf_ptr as *mut _)
         };
+
+        let key = crate::convert_pickling_mode_to_key(mode);
 
         let unpickle_error = unsafe {
             olm_sys::olm_unpickle_outbound_group_session(

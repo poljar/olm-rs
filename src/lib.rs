@@ -46,6 +46,23 @@ pub struct OlmVersion {
     pub patch: u8,
 }
 
+/// Used for setting the encryption parameter for pickling (serialisation) functions.
+/// `Unencrypted` is functionally equivalent to `Encrypted{key: &[]}`, but is much more clear.
+/// Pickling modes have to be equivalent for pickling and unpickling operations to succeed.
+pub enum PicklingMode<'a> {
+    Unencrypted,
+    Encrypted { key: &'a [u8] },
+}
+
+/// Convenience function that maps `Unencrypted` to an empty slice, or
+/// unwraps `Encrypted`. Mostly for reducing code duplication.
+pub(crate) fn convert_pickling_mode_to_key(mode: PicklingMode) -> &[u8] {
+    match mode {
+        PicklingMode::Unencrypted => &[],
+        PicklingMode::Encrypted { key: x } => x,
+    }
+}
+
 /// Returns the version number of the currently utilised `libolm`.
 ///
 /// # C-API equivalent

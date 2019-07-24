@@ -20,6 +20,7 @@ use olm_rs::inbound_group_session::OlmInboundGroupSession;
 use olm_rs::outbound_group_session::OlmOutboundGroupSession;
 use olm_rs::session::{OlmMessageType, OlmSession};
 use olm_rs::utility::OlmUtility;
+use olm_rs::PicklingMode;
 use olm_rs::*;
 
 #[test]
@@ -185,10 +186,11 @@ fn account_pickling_fails_on_wrong_key() {
     let pickled;
     {
         let olm_account = OlmAccount::new();
-        pickled = olm_account.pickle(&[3, 2, 1]);
+        pickled = olm_account.pickle(PicklingMode::Encrypted { key: &[3, 2, 1] });
     }
     // wrong key
-    let olm_account_bad = OlmAccount::unpickle(pickled, &[1, 2, 3]);
+    let olm_account_bad =
+        OlmAccount::unpickle(pickled, PicklingMode::Encrypted { key: &[1, 2, 3] });
 
     assert!(olm_account_bad.is_err());
     assert_eq!(olm_account_bad.err(), Some(OlmAccountError::BadAccountKey));
@@ -197,8 +199,8 @@ fn account_pickling_fails_on_wrong_key() {
 fn create_session_pair() -> (OlmSession, OlmSession) {
     let pickled_account_a = String::from("eOBXIKivUT6YYowRH031BNv7zNmzqM5B7CpXdyeaPvala5mt7/OeqrG1qVA7vA1SYloFyvJPIy0QNkD3j1HiPl5vtZHN53rtfZ9exXDok03zjmssqn4IJsqcA7Fbo1FZeKafG0NFcWwCPTdmcV7REqxjqGm3I4K8MQFa45AdTGSUu2C12cWeOcbSMlcINiMral+Uyah1sgPmLJ18h1qcnskXUXQvpffZ5DiUw1Iz5zxnwOQF1GVyowPJD7Zdugvj75RQnDxAn6CzyvrY2k2CuedwqDC3fIXM2xdUNWttW4nC2g4InpBhCVvNwhZYxlUb5BUEjmPI2AB3dAL5ry6o9MFncmbN6x5x");
     let pickled_account_b = String::from("eModTvoFi9oOIkax4j4nuxw9Tcl/J8mOmUctUWI68Q89HSaaPTqR+tdlKQ85v2GOs5NlZCp7EuycypN9GQ4fFbHUCrS7nspa3GFBWsR8PnM8+wez5PWmfFZLg3drOvT0jbMjpDx0MjGYClHBqcrEpKx9oFaIRGBaX6HXzT4lRaWSJkXxuX92q8iGNrLn96PuAWFNcD+2JXpPcNFntslwLUNgqzpZ04aIFYwL80GmzyOgq3Bz1GO6u3TgCQEAmTIYN2QkO0MQeuSfe7UoMumhlAJ6R8GPcdSSPtmXNk4tdyzzlgpVq1hm7ZLKto+g8/5Aq3PvnvA8wCqno2+Pi1duK1pZFTIlActr");
-    let account_a = OlmAccount::unpickle(pickled_account_a, &[]).unwrap();
-    let account_b = OlmAccount::unpickle(pickled_account_b, &[]).unwrap();
+    let account_a = OlmAccount::unpickle(pickled_account_a, PicklingMode::Unencrypted).unwrap();
+    let account_b = OlmAccount::unpickle(pickled_account_b, PicklingMode::Unencrypted).unwrap();
     let _identity_key_a = String::from("qIEr3TWcJQt4CP8QoKKJcCaukByIOpgh6erBkhLEa2o");
     let _one_time_key_a = String::from("WzsbsjD85iB1R32iWxfJdwkgmdz29ClMbJSJziECYwk");
     let identity_key_b = String::from("q/YhJtog/5VHCAS9rM9uUf6AaFk1yPe4GYuyUOXyQCg");
@@ -234,16 +236,17 @@ fn olm_encrypt_decrypt() {
 #[test]
 fn session_pickling_valid() {
     let pickled_account_a = String::from("eOBXIKivUT6YYowRH031BNv7zNmzqM5B7CpXdyeaPvala5mt7/OeqrG1qVA7vA1SYloFyvJPIy0QNkD3j1HiPl5vtZHN53rtfZ9exXDok03zjmssqn4IJsqcA7Fbo1FZeKafG0NFcWwCPTdmcV7REqxjqGm3I4K8MQFa45AdTGSUu2C12cWeOcbSMlcINiMral+Uyah1sgPmLJ18h1qcnskXUXQvpffZ5DiUw1Iz5zxnwOQF1GVyowPJD7Zdugvj75RQnDxAn6CzyvrY2k2CuedwqDC3fIXM2xdUNWttW4nC2g4InpBhCVvNwhZYxlUb5BUEjmPI2AB3dAL5ry6o9MFncmbN6x5x");
-    let account_a = OlmAccount::unpickle(pickled_account_a, &[]).unwrap();
+    let account_a = OlmAccount::unpickle(pickled_account_a, PicklingMode::Unencrypted).unwrap();
     let identity_key_b = String::from("qIEr3TWcJQt4CP8QoKKJcCaukByIOpgh6erBkhLEa2o");
     let one_time_key_b = String::from("WzsbsjD85iB1R32iWxfJdwkgmdz29ClMbJSJziECYwk");
     let outbound_session =
         OlmSession::create_outbound_session(&account_a, &identity_key_b, &one_time_key_b).unwrap();
 
     let session_id_before = outbound_session.session_id();
-    let pickled_session = outbound_session.pickle(&[]);
+    let pickled_session = outbound_session.pickle(PicklingMode::Unencrypted);
 
-    let outbound_session_unpickled = OlmSession::unpickle(pickled_session, &[]).unwrap();
+    let outbound_session_unpickled =
+        OlmSession::unpickle(pickled_session, PicklingMode::Unencrypted).unwrap();
     let session_id_after = outbound_session_unpickled.session_id();
     assert_eq!(session_id_before, session_id_after);
 }
@@ -251,15 +254,16 @@ fn session_pickling_valid() {
 #[test]
 fn session_pickling_fails_on_wrong_key() {
     let pickled_account_a = String::from("eOBXIKivUT6YYowRH031BNv7zNmzqM5B7CpXdyeaPvala5mt7/OeqrG1qVA7vA1SYloFyvJPIy0QNkD3j1HiPl5vtZHN53rtfZ9exXDok03zjmssqn4IJsqcA7Fbo1FZeKafG0NFcWwCPTdmcV7REqxjqGm3I4K8MQFa45AdTGSUu2C12cWeOcbSMlcINiMral+Uyah1sgPmLJ18h1qcnskXUXQvpffZ5DiUw1Iz5zxnwOQF1GVyowPJD7Zdugvj75RQnDxAn6CzyvrY2k2CuedwqDC3fIXM2xdUNWttW4nC2g4InpBhCVvNwhZYxlUb5BUEjmPI2AB3dAL5ry6o9MFncmbN6x5x");
-    let account_a = OlmAccount::unpickle(pickled_account_a, &[]).unwrap();
+    let account_a = OlmAccount::unpickle(pickled_account_a, PicklingMode::Unencrypted).unwrap();
     let identity_key_b = String::from("qIEr3TWcJQt4CP8QoKKJcCaukByIOpgh6erBkhLEa2o");
     let one_time_key_b = String::from("WzsbsjD85iB1R32iWxfJdwkgmdz29ClMbJSJziECYwk");
     let outbound_session =
         OlmSession::create_outbound_session(&account_a, &identity_key_b, &one_time_key_b).unwrap();
-    let pickled_session = outbound_session.pickle(&[3, 2, 1]);
+    let pickled_session = outbound_session.pickle(PicklingMode::Encrypted { key: &[3, 2, 1] });
 
     // wrong key
-    let outbound_session_bad = OlmSession::unpickle(pickled_session, &[1, 2, 3]);
+    let outbound_session_bad =
+        OlmSession::unpickle(pickled_session, PicklingMode::Encrypted { key: &[1, 2, 3] });
     assert!(outbound_session_bad.is_err());
     assert_eq!(
         outbound_session_bad.err(),
@@ -277,8 +281,8 @@ fn group_session_pickling_valid() {
     // no messages have been sent yet
     assert_eq!(0, ogs.session_message_index());
 
-    let ogs_pickled = ogs.pickle(&[]);
-    let ogs = OlmOutboundGroupSession::unpickle(ogs_pickled, &[]).unwrap();
+    let ogs_pickled = ogs.pickle(PicklingMode::Unencrypted);
+    let ogs = OlmOutboundGroupSession::unpickle(ogs_pickled, PicklingMode::Unencrypted).unwrap();
     assert_eq!(ogs_id, ogs.session_id());
 
     let igs = OlmInboundGroupSession::new(&ogs.session_key()).unwrap();
@@ -289,8 +293,8 @@ fn group_session_pickling_valid() {
     // no messages have been sent yet
     assert_eq!(0, igs.first_known_index());
 
-    let igs_pickled = igs.pickle(&[]);
-    let igs = OlmInboundGroupSession::unpickle(igs_pickled, &[]).unwrap();
+    let igs_pickled = igs.pickle(PicklingMode::Unencrypted);
+    let igs = OlmInboundGroupSession::unpickle(igs_pickled, PicklingMode::Unencrypted).unwrap();
     assert_eq!(igs_id, igs.session_id());
 }
 
