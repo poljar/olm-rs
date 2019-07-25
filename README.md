@@ -4,8 +4,6 @@ This project is dedicated towards creating a safe wrapper for [libolm](https://g
 
 Matrix room for discussion: *[#olm-rs:matrix.org](https://matrix.to/#/#olm-rs:matrix.org)*
 
-The usage of this library is currently discouraged, as it still lacks a lot of testing and the API is guaranteed to change in major ways.
-
 ### Building
 
 `libolm` is compiled and statically linked on building `olm-sys` - so no further setup is required.

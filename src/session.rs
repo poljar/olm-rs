@@ -20,6 +20,7 @@
 use crate::account::OlmAccount;
 use crate::errors;
 use crate::errors::OlmSessionError;
+use crate::PicklingMode;
 use olm_sys;
 use ring::rand::{SecureRandom, SystemRandom};
 use std::cmp::Ordering;
@@ -214,8 +215,7 @@ impl OlmSession {
         session_id_result
     }
 
-    /// Serialises an `OlmSession` to encrypted base64. The encryption key is free to choose
-    /// (empty byte slice is allowed).
+    /// Serialises an `OlmSession` to encrypted base64.
     ///
     /// # C-API equivalent
     /// `olm_pickle_session`
@@ -223,10 +223,12 @@ impl OlmSession {
     /// # Panics
     /// * `OUTPUT_BUFFER_TOO_SMALL` for OlmSession's pickled buffer
     ///
-    pub fn pickle(&self, key: &[u8]) -> String {
+    pub fn pickle(&self, mode: PicklingMode) -> String {
         let pickled_len = unsafe { olm_sys::olm_pickle_session_length(self.olm_session_ptr) };
         let pickled_buf = vec![0; pickled_len];
         let pickled_ptr = Box::into_raw(pickled_buf.into_boxed_slice());
+
+        let key = crate::convert_pickling_mode_to_key(mode);
 
         let pickle_error = unsafe {
             olm_sys::olm_pickle_session(
@@ -263,7 +265,9 @@ impl OlmSession {
     /// * `BadAccountKey` if the key doesn't match the one the session was encrypted with
     /// * `InvalidBase64` if decoding the supplied `pickled` string slice fails
     ///
-    pub fn unpickle(mut pickled: String, key: &[u8]) -> Result<Self, OlmSessionError> {
+    pub fn unpickle(mut pickled: String, mode: PicklingMode) -> Result<Self, OlmSessionError> {
+        let key = crate::convert_pickling_mode_to_key(mode);
+
         Self::create_session_with(|olm_session_ptr| {
             let pickled_len = pickled.len();
             unsafe {

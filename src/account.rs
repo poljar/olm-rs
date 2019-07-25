@@ -19,6 +19,7 @@
 use crate::errors;
 use crate::errors::OlmAccountError;
 use crate::session::OlmSession;
+use crate::PicklingMode;
 use olm_sys;
 use ring::rand::{SecureRandom, SystemRandom};
 use std::ffi::CStr;
@@ -81,8 +82,7 @@ impl OlmAccount {
         OlmAccount { olm_account_ptr }
     }
 
-    /// Serialises an `OlmAccount` to encrypted Base64. The encryption key is free to choose
-    /// (empty byte slice is allowed).
+    /// Serialises an `OlmAccount` to encrypted Base64.
     ///
     /// # C-API equivalent
     /// `olm_pickle_account`
@@ -90,12 +90,13 @@ impl OlmAccount {
     /// # Example
     /// ```
     /// use olm_rs::account::OlmAccount;
+    /// use olm_rs::PicklingMode;
     ///
     /// let identity_keys;
     /// let olm_account = OlmAccount::new();
     /// identity_keys = olm_account.identity_keys();
-    /// let pickled = olm_account.pickle(&[]);
-    /// let olm_account_2 = OlmAccount::unpickle(pickled, &[]).unwrap();
+    /// let pickled = olm_account.pickle(PicklingMode::Unencrypted);
+    /// let olm_account_2 = OlmAccount::unpickle(pickled, PicklingMode::Unencrypted).unwrap();
     /// let identity_keys_2 = olm_account_2.identity_keys();
     ///
     /// assert_eq!(identity_keys, identity_keys_2);
@@ -104,11 +105,13 @@ impl OlmAccount {
     /// # Panics
     /// * `OUTPUT_BUFFER_TOO_SMALL` for OlmAccount's pickled buffer
     ///
-    pub fn pickle(&self, key: &[u8]) -> String {
+    pub fn pickle(&self, mode: PicklingMode) -> String {
         let pickled_buf: Vec<u8> =
             vec![0; unsafe { olm_sys::olm_pickle_account_length(self.olm_account_ptr) }];
         let pickled_len = pickled_buf.len();
         let pickled_ptr = Box::into_raw(pickled_buf.into_boxed_slice());
+
+        let key = crate::convert_pickling_mode_to_key(mode);
 
         let pickle_error = unsafe {
             olm_sys::olm_pickle_account(
@@ -145,13 +148,15 @@ impl OlmAccount {
     /// * `BadAccountKey` if the key doesn't match the one the account was encrypted with
     /// * `InvalidBase64` if decoding the supplied `pickled` string slice fails
     ///
-    pub fn unpickle(mut pickled: String, key: &[u8]) -> Result<Self, OlmAccountError> {
+    pub fn unpickle(mut pickled: String, mode: PicklingMode) -> Result<Self, OlmAccountError> {
         let pickled_len = pickled.len();
         let pickled_buf = Box::new(unsafe { pickled.as_bytes_mut() });
 
         let olm_account_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_account_size() }];
         let olm_account_buf_ptr = Box::into_raw(olm_account_buf.into_boxed_slice()) as *mut _;
         let olm_account_ptr = unsafe { olm_sys::olm_account(olm_account_buf_ptr) };
+
+        let key = crate::convert_pickling_mode_to_key(mode);
 
         let unpickle_error = unsafe {
             olm_sys::olm_unpickle_account(
