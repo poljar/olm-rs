@@ -319,3 +319,27 @@ fn group_session_crypto_valid() {
     // first message sent, so the message index is zero
     assert_eq!(0, decryption_result.1);
 }
+
+#[test]
+fn test_session_ord_trait() {
+    // n0W5IJ2ZmaI9FxKRj/wohUQ6WEU0SfoKsgKKHsr4VbM
+    let session_1 = OlmSession::unpickle("7g5cfQRsDk2ROXf9S01n2leZiFRon+EbvXcMOADU0UGvlaV6t/0ihD2/0QGckDIvbmE1aV+PxB0zUtHXh99bI/60N+PWkCLA84jEY4sz3d45ui/TVoFGLDHlymKxvlj7XngXrbtlxSkVntsPzDiNpKEXCa26N2ubKpQ0fbjrV5gbBTYWfU04DXHPXFDTksxpNALYt/h0eVMVhf6hB0ZzpLBsOG0mpwkLufwub0CuDEDGGmRddz3TcNCLq5NnI8R9udDWvHAkTS1UTbHuIf/y6cZg875nJyXpAvd8/XhL8TOo8ot2sE1fElBa4vrH/m9rBQMC1GPkhLBIizmY44C+Sq9PQRnF+uCZ".to_string(),PicklingMode::Unencrypted).unwrap();
+    // +9pHJhP3K4E5/2m8PYBPLh8pS9CJodwUOh8yz3mnmw0
+    let session_2 = OlmSession::unpickle("7g5cfQRsDk2ROXf9S01n2leZiFRon+EbvXcMOADU0UFD+q37/WlfTAzQsSjCdD07FcErZ4siEy5vpiB+pyO8i53ptZvb2qRvqNKFzPaXuu33PS2PBTmmnR+kJt+DgDNqWadyaj/WqEAejc7ALqSs5GuhbZtpoLe+lRSRK0rwVX3gzz4qrl8pm0pD5pSZAUWRXDRlieGWMclz68VUvnSaQH7ElTo4S634CJk+xQfFFCD26v0yONPSN6rwouS1cWPuG5jTlnV8vCFVTU2+lduKh54Ko6FUJ/ei4xR8Nk2duBGSc/TdllX9e2lDYHSUkWoD4ti5xsFioB8Blus7JK9BZfcmRmdlxIOD".to_string(),PicklingMode::Unencrypted).unwrap();
+    // MC7n8hX1l7WlC2/WJGHZinMocgiBZa4vwGAOredb/ME
+    let session_3 = OlmSession::unpickle("7g5cfQRsDk2ROXf9S01n2leZiFRon+EbvXcMOADU0UGNk2TmVDJ95K0Nywf24FNklNVtXtFDiFPHFwNSmCbHNCp3hsGtZlt0AHUkMmL48XklLqzwtVk5/v2RRmSKR5LqYdIakrtuK/fY0ENhBZIbI1sRetaJ2KMbY9l6rCJNfFg8VhpZ4KTVvEZVuP9g/eZkCnP5NxzXiBRF6nfY3O/zhcKxa3acIqs6BMhyLsfuJ80t+hQ1HvVyuhBerGujdSDzV9tJ9SPidOwfYATk81LVF9hTmnI0KaZa7qCtFzhG0dU/Z3hIWH9HOaw1aSB/IPmughbwdJOwERyhuo3YHoznlQnJ7X252BlI".to_string(),PicklingMode::Unencrypted).unwrap();
+
+    let session_1_id = session_1.session_id();
+    let session_2_id = session_2.session_id();
+    let session_3_id = session_3.session_id();
+
+    let mut session_list: Vec<OlmSession> = Vec::new();
+    session_list.push(session_1);
+    session_list.push(session_2);
+    session_list.push(session_3);
+
+    session_list.sort_unstable();
+    assert_eq!(session_list.get(0).unwrap().session_id(), session_2_id);
+    assert_eq!(session_list.get(1).unwrap().session_id(), session_3_id);
+    assert_eq!(session_list.get(2).unwrap().session_id(), session_1_id);
+}
