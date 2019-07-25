@@ -22,9 +22,11 @@ use crate::errors;
 use crate::errors::OlmSessionError;
 use olm_sys;
 use ring::rand::{SecureRandom, SystemRandom};
+use std::cmp::Ordering;
 use std::ffi::CStr;
 
 /// Either an outbound or inbound session for secure communication.
+#[derive(Eq)]
 pub struct OlmSession {
     pub olm_session_ptr: *mut olm_sys::OlmSession,
 }
@@ -544,5 +546,24 @@ impl Drop for OlmSession {
             olm_sys::olm_clear_session(self.olm_session_ptr);
             Box::from_raw(self.olm_session_ptr);
         }
+    }
+}
+
+/// orders by unicode code points (which is a superset of ASCII)
+impl Ord for OlmSession {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.session_id().cmp(&other.session_id())
+    }
+}
+
+impl PartialOrd for OlmSession {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for OlmSession {
+    fn eq(&self, other: &Self) -> bool {
+        self.session_id() == other.session_id()
     }
 }
