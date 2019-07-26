@@ -21,8 +21,8 @@ use crate::account::OlmAccount;
 use crate::errors;
 use crate::errors::OlmSessionError;
 use crate::PicklingMode;
+use getrandom::getrandom;
 use olm_sys;
-use ring::rand::{SecureRandom, SystemRandom};
 use std::cmp::Ordering;
 use std::ffi::CStr;
 
@@ -114,10 +114,7 @@ impl OlmSession {
             let random_len =
                 unsafe { olm_sys::olm_create_outbound_session_random_length(olm_session_ptr) };
             let mut random_buf: Vec<u8> = vec![0; random_len];
-            {
-                let rng = SystemRandom::new();
-                rng.fill(random_buf.as_mut_slice()).unwrap();
-            }
+            let _ = getrandom(random_buf.as_mut_slice());
             let random_ptr = Box::into_raw(random_buf.into_boxed_slice());
 
             let error = unsafe {
@@ -303,10 +300,7 @@ impl OlmSession {
 
         let random_len = unsafe { olm_sys::olm_encrypt_random_length(self.olm_session_ptr) };
         let mut random_buf: Vec<u8> = vec![0; random_len];
-        {
-            let rng = SystemRandom::new();
-            rng.fill(random_buf.as_mut_slice()).unwrap();
-        }
+        let _ = getrandom(random_buf.as_mut_slice());
         let random_ptr = Box::into_raw(random_buf.into_boxed_slice());
 
         let encrypt_error = unsafe {

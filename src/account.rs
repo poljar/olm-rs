@@ -20,8 +20,8 @@ use crate::errors;
 use crate::errors::OlmAccountError;
 use crate::session::OlmSession;
 use crate::PicklingMode;
+use getrandom::getrandom;
 use olm_sys;
-use ring::rand::{SecureRandom, SystemRandom};
 use std::ffi::CStr;
 
 /// An olm account manages all cryptographic keys used on a device.
@@ -58,10 +58,7 @@ impl OlmAccount {
         // determine optimal length of the random buffer
         let random_len = unsafe { olm_sys::olm_create_account_random_length(olm_account_ptr) };
         let mut random_buf: Vec<u8> = vec![0; random_len];
-        {
-            let rng = SystemRandom::new();
-            rng.fill(random_buf.as_mut_slice()).unwrap();
-        }
+        let _ = getrandom(random_buf.as_mut_slice());
         let random_ptr = Box::into_raw(random_buf.into_boxed_slice());
 
         // create OlmAccount with supplied random data
@@ -307,10 +304,7 @@ impl OlmAccount {
 
         // Construct and populate random buffer
         let mut random_buf: Vec<u8> = vec![0; random_len];
-        {
-            let rng = SystemRandom::new();
-            rng.fill(random_buf.as_mut_slice()).unwrap();
-        }
+        let _ = getrandom(random_buf.as_mut_slice());
         let random_ptr = Box::into_raw(random_buf.into_boxed_slice());
 
         // Call function for generating one time keys
