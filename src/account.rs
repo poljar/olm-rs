@@ -36,6 +36,12 @@ pub struct OlmAccount {
     pub olm_account_ptr: *mut olm_sys::OlmAccount,
 }
 
+/// Struct representing the parsed result of `OlmAccount::identity_keys()`.
+pub struct IdentityKeys {
+    pub curve25519: String,
+    pub ed25519: String,
+}
+
 impl OlmAccount {
     /// Creates a new instance of OlmAccount. During the instantiation the Ed25519 fingerprint key pair
     /// and the Curve25519 identity key pair are generated. For more information see
@@ -395,6 +401,21 @@ impl OlmAccount {
             Err(Self::last_error(self.olm_account_ptr))
         } else {
             Ok(())
+        }
+    }
+
+    /// Convenience function that returns the parsed result of `OlmAccount::identity_keys()`.
+    /// As a result everything mentioned for that function applies here as well.
+    pub fn parsed_identity_keys(&self) -> IdentityKeys {
+        let identity_keys = self.identity_keys();
+        let identity_keys_split: Vec<&str> = identity_keys.split('"').collect();
+
+        // We parse as follows, illustrated with example output from identity_keys():
+        // {"curve25519":"R1sNKJt6FjeCaKy8HuUTRe/YvoDgcYXxcG1mMHZNrnA","ed25519":"O8/IG5pcHBlffgmRTAOBeOduz7apOifh0uwbhaztDls"}
+        // 0|----1-----|2|------------------3------------------------|4|---5---|6|-------------------7-----------------------|8
+        IdentityKeys {
+            curve25519: identity_keys_split[3].into(),
+            ed25519: identity_keys_split[7].into(),
         }
     }
 }

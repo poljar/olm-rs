@@ -343,3 +343,15 @@ fn test_session_ord_trait() {
     assert_eq!(session_list.get(1).unwrap().session_id(), session_3_id);
     assert_eq!(session_list.get(2).unwrap().session_id(), session_1_id);
 }
+
+#[test]
+pub fn parse_identity_keys_correct() {
+    let account = OlmAccount::new();
+    let identity_keys_json = json::parse(&account.identity_keys()).unwrap();
+    let identity_keys_parsed = account.parsed_identity_keys();
+    assert_eq!(
+        identity_keys_parsed.curve25519,
+        identity_keys_json["curve25519"]
+    );
+    assert_eq!(identity_keys_parsed.ed25519, identity_keys_json["ed25519"]);
+}
