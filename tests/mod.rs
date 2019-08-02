@@ -14,11 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub mod account;
-pub mod group_session;
-pub mod pickling;
-pub mod session;
-
 use olm_rs::{account::OlmAccount, utility::OlmUtility, OlmVersion};
 
 #[test]
