@@ -538,15 +538,6 @@ pub enum OlmMessageType {
     Message,
 }
 
-impl Drop for OlmSession {
-    fn drop(&mut self) {
-        unsafe {
-            olm_sys::olm_clear_session(self.olm_session_ptr);
-            Box::from_raw(self.olm_session_ptr);
-        }
-    }
-}
-
 /// orders by unicode code points (which is a superset of ASCII)
 impl Ord for OlmSession {
     fn cmp(&self, other: &Self) -> Ordering {
@@ -563,5 +554,14 @@ impl PartialOrd for OlmSession {
 impl PartialEq for OlmSession {
     fn eq(&self, other: &Self) -> bool {
         self.session_id() == other.session_id()
+    }
+}
+
+impl Drop for OlmSession {
+    fn drop(&mut self) {
+        unsafe {
+            olm_sys::olm_clear_session(self.olm_session_ptr);
+            let _drop_session = Box::from_raw(self.olm_session_ptr as *mut &[u8]);
+        }
     }
 }

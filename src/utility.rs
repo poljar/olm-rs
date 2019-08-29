@@ -149,7 +149,7 @@ impl Drop for OlmUtility {
     fn drop(&mut self) {
         unsafe {
             olm_sys::olm_clear_utility(self.olm_utility_ptr);
-            Box::from_raw(self.olm_utility_ptr);
+            let _drop_utility = Box::from_raw(self.olm_utility_ptr as *mut &[u8]);
         }
     }
 }

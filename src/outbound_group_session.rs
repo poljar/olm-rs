@@ -335,7 +335,7 @@ impl Drop for OlmOutboundGroupSession {
     fn drop(&mut self) {
         unsafe {
             olm_sys::olm_clear_outbound_group_session(self.group_session_ptr);
-            Box::from_raw(self.group_session_ptr);
+            let _drop_session = Box::from_raw(self.group_session_ptr as *mut &[u8]);
         }
     }
 }

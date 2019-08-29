@@ -428,11 +428,11 @@ impl Default for OlmAccount {
 
 impl Drop for OlmAccount {
     fn drop(&mut self) {
-        let _olm_account_buf: Box<olm_sys::OlmAccount> = unsafe {
+        unsafe {
             olm_sys::olm_clear_account(self.olm_account_ptr);
             // make Rust aware of the allocated memory again,
             // so it gets freed after going out of scope
-            Box::from_raw(self.olm_account_ptr)
-        };
+            let _drop_account = Box::from_raw(self.olm_account_ptr as *mut &[u8]);
+        }
     }
 }
