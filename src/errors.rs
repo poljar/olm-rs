@@ -22,7 +22,7 @@
 
 use olm_sys;
 
-pub fn olm_error() -> usize {
+pub(crate) fn olm_error() -> usize {
     unsafe { olm_sys::olm_error() }
 }
 
