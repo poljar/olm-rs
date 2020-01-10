@@ -29,7 +29,8 @@ use std::ffi::CStr;
 /// Either an outbound or inbound session for secure communication.
 #[derive(Eq)]
 pub struct OlmSession {
-    pub olm_session_ptr: *mut olm_sys::OlmSession,
+    pub(crate) olm_session_ptr: *mut olm_sys::OlmSession,
+    olm_session_buf_ptr: *mut [u8],
 }
 
 impl OlmSession {
@@ -142,9 +143,9 @@ impl OlmSession {
         mut f: F,
     ) -> Result<OlmSession, OlmSessionError> {
         let olm_session_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_session_size() }];
-        let olm_session_buf_ptr = Box::into_raw(olm_session_buf.into_boxed_slice()) as *mut _;
+        let olm_session_buf_ptr = Box::into_raw(olm_session_buf.into_boxed_slice());
 
-        let olm_session_ptr = unsafe { olm_sys::olm_session(olm_session_buf_ptr) };
+        let olm_session_ptr = unsafe { olm_sys::olm_session(olm_session_buf_ptr as *mut _) };
         let error = f(olm_session_ptr);
         if error == errors::olm_error() {
             if Self::last_error(olm_session_ptr) == OlmSessionError::NotEnoughRandom {
@@ -152,7 +153,10 @@ impl OlmSession {
             }
             Err(Self::last_error(olm_session_ptr))
         } else {
-            Ok(OlmSession { olm_session_ptr })
+            Ok(OlmSession {
+                olm_session_ptr,
+                olm_session_buf_ptr,
+            })
         }
     }
 
@@ -561,7 +565,7 @@ impl Drop for OlmSession {
     fn drop(&mut self) {
         unsafe {
             olm_sys::olm_clear_session(self.olm_session_ptr);
-            let _drop_session = Box::from_raw(self.olm_session_ptr as *mut &[u8]);
+            let _drop_session_buf = Box::from_raw(self.olm_session_buf_ptr);
         }
     }
 }

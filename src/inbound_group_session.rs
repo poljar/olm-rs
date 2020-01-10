@@ -25,7 +25,8 @@ use std::ffi::CStr;
 /// An in-bound group session is responsible for decrypting incoming
 /// communication in a Megolm session.
 pub struct OlmInboundGroupSession {
-    pub group_session_ptr: *mut olm_sys::OlmInboundGroupSession,
+    pub(crate) group_session_ptr: *mut olm_sys::OlmInboundGroupSession,
+    group_session_buf_ptr: *mut [u8],
 }
 
 impl OlmInboundGroupSession {
@@ -42,10 +43,11 @@ impl OlmInboundGroupSession {
         let olm_inbound_group_session_buf: Vec<u8> =
             vec![0; unsafe { olm_sys::olm_inbound_group_session_size() }];
         let olm_inbound_group_session_buf_ptr =
-            Box::into_raw(olm_inbound_group_session_buf.into_boxed_slice()) as *mut _;
+            Box::into_raw(olm_inbound_group_session_buf.into_boxed_slice());
 
-        let olm_inbound_group_session_ptr =
-            unsafe { olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf_ptr) };
+        let olm_inbound_group_session_ptr = unsafe {
+            olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf_ptr as *mut _)
+        };
         let key_buf = key.as_bytes();
 
         let create_error = unsafe {
@@ -61,6 +63,7 @@ impl OlmInboundGroupSession {
         } else {
             Ok(OlmInboundGroupSession {
                 group_session_ptr: olm_inbound_group_session_ptr,
+                group_session_buf_ptr: olm_inbound_group_session_buf_ptr,
             })
         }
     }
@@ -78,10 +81,11 @@ impl OlmInboundGroupSession {
         let olm_inbound_group_session_buf: Vec<u8> =
             vec![0; unsafe { olm_sys::olm_inbound_group_session_size() }];
         let olm_inbound_group_session_buf_ptr =
-            Box::into_raw(olm_inbound_group_session_buf.into_boxed_slice()) as *mut _;
+            Box::into_raw(olm_inbound_group_session_buf.into_boxed_slice());
 
-        let olm_inbound_group_session_ptr =
-            unsafe { olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf_ptr) };
+        let olm_inbound_group_session_ptr = unsafe {
+            olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf_ptr as *mut _)
+        };
 
         let key_buf = key.as_bytes();
         let key_ptr = key_buf.as_ptr() as *const _;
@@ -99,6 +103,7 @@ impl OlmInboundGroupSession {
         } else {
             Ok(OlmInboundGroupSession {
                 group_session_ptr: olm_inbound_group_session_ptr,
+                group_session_buf_ptr: olm_inbound_group_session_buf_ptr,
             })
         }
     }
@@ -164,9 +169,11 @@ impl OlmInboundGroupSession {
         let olm_inbound_group_session_buf: Vec<u8> =
             vec![0; unsafe { olm_sys::olm_inbound_group_session_size() }];
         let olm_inbound_group_session_buf_ptr =
-            Box::into_raw(olm_inbound_group_session_buf.into_boxed_slice()) as *mut _;
-        let olm_inbound_group_session_ptr =
-            unsafe { olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf_ptr) };
+            Box::into_raw(olm_inbound_group_session_buf.into_boxed_slice());
+
+        let olm_inbound_group_session_ptr = unsafe {
+            olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf_ptr as *mut _)
+        };
 
         let key = crate::convert_pickling_mode_to_key(mode);
 
@@ -185,6 +192,7 @@ impl OlmInboundGroupSession {
         } else {
             Ok(OlmInboundGroupSession {
                 group_session_ptr: olm_inbound_group_session_ptr,
+                group_session_buf_ptr: olm_inbound_group_session_buf_ptr,
             })
         }
     }
@@ -398,7 +406,7 @@ impl Drop for OlmInboundGroupSession {
     fn drop(&mut self) {
         unsafe {
             olm_sys::olm_clear_inbound_group_session(self.group_session_ptr);
-            let _drop_session = Box::from_raw(self.group_session_ptr as *mut &[u8]);
+            let _drop_session_buf = Box::from_raw(self.group_session_buf_ptr);
         }
     }
 }
