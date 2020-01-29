@@ -32,8 +32,9 @@ use std::ffi::CStr;
 /// println!("{}", olm_account.identity_keys());
 /// ```
 pub struct OlmAccount {
-    // Pointer by which libolm acquires the data saved in an instance of OlmAccount
-    pub olm_account_ptr: *mut olm_sys::OlmAccount,
+    /// Pointer by which libolm acquires the data saved in an instance of OlmAccount
+    pub(crate) olm_account_ptr: *mut olm_sys::OlmAccount,
+    olm_account_buf_ptr: *mut [u8],
 }
 
 /// Struct representing the parsed result of `OlmAccount::identity_keys()`.
@@ -56,10 +57,10 @@ impl OlmAccount {
     pub fn new() -> Self {
         // allocate buffer for OlmAccount to be written into
         let olm_account_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_account_size() }];
-        let olm_account_buf_ptr = Box::into_raw(olm_account_buf.into_boxed_slice()) as *mut _;
+        let olm_account_buf_ptr = Box::into_raw(olm_account_buf.into_boxed_slice());
 
         // let libolm populate the allocated memory
-        let olm_account_ptr = unsafe { olm_sys::olm_account(olm_account_buf_ptr) };
+        let olm_account_ptr = unsafe { olm_sys::olm_account(olm_account_buf_ptr as *mut _) };
 
         // determine optimal length of the random buffer
         let random_len = unsafe { olm_sys::olm_create_account_random_length(olm_account_ptr) };
@@ -82,7 +83,10 @@ impl OlmAccount {
                 _ => unreachable!("olm_create_account only returns NOT_ENOUGH_RANDOM error"),
             }
         }
-        OlmAccount { olm_account_ptr }
+        OlmAccount {
+            olm_account_ptr,
+            olm_account_buf_ptr,
+        }
     }
 
     /// Serialises an `OlmAccount` to encrypted Base64.
@@ -156,8 +160,8 @@ impl OlmAccount {
         let pickled_buf = Box::new(unsafe { pickled.as_bytes_mut() });
 
         let olm_account_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_account_size() }];
-        let olm_account_buf_ptr = Box::into_raw(olm_account_buf.into_boxed_slice()) as *mut _;
-        let olm_account_ptr = unsafe { olm_sys::olm_account(olm_account_buf_ptr) };
+        let olm_account_buf_ptr = Box::into_raw(olm_account_buf.into_boxed_slice());
+        let olm_account_ptr = unsafe { olm_sys::olm_account(olm_account_buf_ptr as *mut _) };
 
         let key = crate::convert_pickling_mode_to_key(mode);
 
@@ -174,7 +178,10 @@ impl OlmAccount {
         if unpickle_error == errors::olm_error() {
             Err(Self::last_error(olm_account_ptr))
         } else {
-            Ok(OlmAccount { olm_account_ptr })
+            Ok(OlmAccount {
+                olm_account_ptr,
+                olm_account_buf_ptr,
+            })
         }
     }
 
@@ -432,7 +439,7 @@ impl Drop for OlmAccount {
             olm_sys::olm_clear_account(self.olm_account_ptr);
             // make Rust aware of the allocated memory again,
             // so it gets freed after going out of scope
-            let _drop_account = Box::from_raw(self.olm_account_ptr as *mut &[u8]);
+            let _drop_account_buf = Box::from_raw(self.olm_account_buf_ptr);
         }
     }
 }

@@ -23,6 +23,7 @@ use std::ffi::CStr;
 
 pub struct OlmUtility {
     olm_utility_ptr: *mut olm_sys::OlmUtility,
+    olm_utility_buf_ptr: *mut [u8],
 }
 
 /// Allows you to make use of crytographic hashing via SHA-2 and
@@ -36,11 +37,14 @@ impl OlmUtility {
     pub fn new() -> Self {
         // allocate the buffer for OlmUtility to be written into
         let olm_utility_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_utility_size() }];
-        let olm_utility_buf_ptr = Box::into_raw(olm_utility_buf.into_boxed_slice()) as *mut _;
+        let olm_utility_buf_ptr = Box::into_raw(olm_utility_buf.into_boxed_slice());
 
-        let olm_utility_ptr = unsafe { olm_sys::olm_utility(olm_utility_buf_ptr) };
+        let olm_utility_ptr = unsafe { olm_sys::olm_utility(olm_utility_buf_ptr as *mut _) };
 
-        Self { olm_utility_ptr }
+        Self {
+            olm_utility_ptr,
+            olm_utility_buf_ptr,
+        }
     }
 
     /// Returns the last error that occurred for an OlmUtility
@@ -149,7 +153,7 @@ impl Drop for OlmUtility {
     fn drop(&mut self) {
         unsafe {
             olm_sys::olm_clear_utility(self.olm_utility_ptr);
-            let _drop_utility = Box::from_raw(self.olm_utility_ptr as *mut &[u8]);
+            let _drop_utility_buf = Box::from_raw(self.olm_utility_buf_ptr);
         }
     }
 }
