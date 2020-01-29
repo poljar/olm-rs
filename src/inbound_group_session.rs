@@ -398,7 +398,18 @@ impl OlmInboundGroupSession {
     /// # C-API equivalent
     /// * `olm_inbound_group_session_is_verified`
     pub fn session_is_verified(&self) -> bool {
-        0 == unsafe { olm_sys::olm_inbound_group_session_is_verified(self.group_session_ptr) }
+        // To get the bool value of an int_c type, check for inequality with zero.
+        //
+        // Truth table:
+        // +-----------+----------+------+
+        // |Orig. value|Expression|Result|
+        // +-----------+----------+------+
+        // |0          |0 != 0    |false |
+        // +-----------+----------+------+
+        // |1          |0 != 1    |true  |
+        // +-----------+----------+------+
+
+        0 != unsafe { olm_sys::olm_inbound_group_session_is_verified(self.group_session_ptr) }
     }
 }
 
