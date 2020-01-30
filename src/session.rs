@@ -448,11 +448,18 @@ impl OlmSession {
     /// `olm_session_has_received_message`
     ///
     pub fn has_received_message(&self) -> bool {
-        let received_message =
-            unsafe { olm_sys::olm_session_has_received_message(self.olm_session_ptr) };
+        // To get the bool value of an int_c type, check for inequality with zero.
+        //
+        // Truth table:
+        // +-----------+----------+------+
+        // |Orig. value|Expression|Result|
+        // +-----------+----------+------+
+        // |0          |0 != 0    |false |
+        // +-----------+----------+------+
+        // |1          |0 != 1    |true  |
+        // +-----------+----------+------+
 
-        // to get the bool value of an int_c type, check for inequality with zero
-        received_message != 0
+        0 != unsafe { olm_sys::olm_session_has_received_message(self.olm_session_ptr) }
     }
 
     /// Checks if the 'prekey' message is for this in-bound session.
