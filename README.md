@@ -13,4 +13,4 @@ Please note however that `libolm` still needs `libstdc++` on your system (and it
 If you are considering to contribute, take a look at the CONTRIBUTING guide.
 
 ### Licensing
-This project is licensed under the GPLv3+ license - for further information see the LICENSE file.
+This project is licensed under the Apache License 2.0 license - for further information see the LICENSE file.
