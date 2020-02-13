@@ -14,8 +14,7 @@
 
 //! This module wraps around all functions following the pattern `olm_utility_*`.
 
-use crate::errors;
-use crate::errors::OlmUtilityError;
+use crate::errors::{self, OlmUtilityError};
 use olm_sys;
 use std::ffi::CStr;
 
@@ -67,6 +66,7 @@ impl OlmUtility {
     ///
     /// # Panics
     /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied output buffer
+    /// * on malformed UTF-8 coding of the hash provided by libolm
     ///
     pub fn sha256_bytes(&self, input_buf: &[u8]) -> String {
         let output_len = unsafe { olm_sys::olm_sha256_length(self.olm_utility_ptr) };
@@ -84,15 +84,13 @@ impl OlmUtility {
         };
 
         let output_after = unsafe { Box::from_raw(output_ptr) };
-        let sha256_result = String::from_utf8(output_after.to_vec())
-            .expect("SHA256 that was genereated by OlmUtility isn't valid UTF-8");
+        // We assume a correct implementation of the SHA256 function here,
+        // that always returns a valid UTF-8 string.
+        let sha256_result = String::from_utf8(output_after.to_vec()).unwrap();
 
         // Errors from sha256 are fatal
         if sha256_error == errors::olm_error() {
-            match Self::last_error(self.olm_utility_ptr) {
-                OlmUtilityError::OutputBufferTooSmall => panic!("Buffer for sha256 is too small!"),
-                _ => panic!("Unknown error occured while creating sha256"),
-            }
+            errors::handle_fatal_error(Self::last_error(self.olm_utility_ptr));
         }
 
         sha256_result

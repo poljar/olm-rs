@@ -19,6 +19,21 @@
 //! but no error code is provided.
 
 use olm_sys;
+use std::fmt::Debug;
+
+/// Since libolm does not do heap allocation and instead relies on the user to
+/// provide already allocated buffers, a lot of potential errors regarding
+/// buffer size can be encountered.
+/// In most places in this library we create such buffers exactly the way
+/// libolm would want, and as such a lot of potential errors would be eliminated.
+/// If such an error is still encountered, it would indicate that something else
+/// is seriously wrong with the execution environment, so we panic unrecoverably.
+pub(crate) fn handle_fatal_error<E>(error: E)
+where
+    E: Debug,
+{
+    unreachable!("Encountered fatal error: {:?}", error);
+}
 
 pub(crate) fn olm_error() -> usize {
     unsafe { olm_sys::olm_error() }

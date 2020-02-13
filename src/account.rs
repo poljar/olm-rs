@@ -74,12 +74,7 @@ impl OlmAccount {
         let _drop_random_buf: Box<[u8]> = unsafe { Box::from_raw(random_ptr as *mut _) };
 
         if create_error == errors::olm_error() {
-            match Self::last_error(olm_account_ptr) {
-                OlmAccountError::NotEnoughRandom => {
-                    panic!("Insufficient random data for generating one time keys for OlmAccount!")
-                }
-                _ => unreachable!("olm_create_account only returns NOT_ENOUGH_RANDOM error"),
-            }
+            errors::handle_fatal_error(Self::last_error(olm_account_ptr));
         }
         OlmAccount {
             olm_account_ptr,
@@ -109,6 +104,7 @@ impl OlmAccount {
     ///
     /// # Panics
     /// * `OUTPUT_BUFFER_TOO_SMALL` for OlmAccount's pickled buffer
+    /// * on malformed UTF-8 coding for pickling provided by libolm
     ///
     pub fn pickle(&self, mode: PicklingMode) -> String {
         let pickled_buf: Vec<u8> =
@@ -129,19 +125,13 @@ impl OlmAccount {
         };
 
         let pickled_after: Box<[u8]> = unsafe { Box::from_raw(pickled_ptr) };
-        let pickled_result = String::from_utf8(pickled_after.to_vec())
-            .expect("Pickled OlmAccount isn't valid UTF-8");
+        let pickled_result = String::from_utf8(pickled_after.to_vec()).unwrap();
 
         if pickle_error == errors::olm_error() {
-            match Self::last_error(self.olm_account_ptr) {
-                OlmAccountError::OutputBufferTooSmall => {
-                    panic!("Buffer for pickled OlmAccount is too small!")
-                }
-                _ => panic!("Unknown error occurred while pickling OlmAccount!"),
-            }
-        } else {
-            pickled_result
+            errors::handle_fatal_error(Self::last_error(self.olm_account_ptr));
         }
+
+        pickled_result
     }
 
     /// Deserialises from encrypted Base64 that was previously obtained by pickling an `OlmAccount`.
@@ -190,6 +180,7 @@ impl OlmAccount {
     ///
     /// # Panics
     /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied identity keys buffer
+    /// * on malformed UTF-8 coding of the identity keys provided by libolm
     ///
     pub fn identity_keys(&self) -> String {
         // get buffer length of identity keys
@@ -209,16 +200,10 @@ impl OlmAccount {
         // String is constructed from the keys buffer and memory is freed after exiting the scope.
         // No memory should be leaked.
         let identity_keys_after: Box<[u8]> = unsafe { Box::from_raw(identity_keys_ptr) };
-        let identity_keys_result = String::from_utf8(identity_keys_after.to_vec())
-            .expect("OlmAccount's identity keys aren't valid UTF-8");
+        let identity_keys_result = String::from_utf8(identity_keys_after.to_vec()).unwrap();
 
         if identity_keys_error == errors::olm_error() {
-            match Self::last_error(self.olm_account_ptr) {
-                OlmAccountError::OutputBufferTooSmall => {
-                    panic!("Buffer for OlmAccount's identity keys is too small!")
-                }
-                _ => panic!("Unknown error occurred while getting OlmAccount's identity keys!"),
-            }
+            errors::handle_fatal_error(Self::last_error(self.olm_account_ptr));
         }
 
         identity_keys_result
@@ -252,6 +237,7 @@ impl OlmAccount {
     ///
     /// # Panics
     /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied signature buffer
+    /// * on malformed UTF-8 coding of the signature provided by libolm
     ///
     pub fn sign(&self, message: &str) -> String {
         let message_buf = message.as_bytes();
@@ -272,16 +258,10 @@ impl OlmAccount {
         };
 
         let signature_after: Box<[u8]> = unsafe { Box::from_raw(signature_ptr) };
-        let signature_result = String::from_utf8(signature_after.into_vec())
-            .expect("Signature from OlmAccount isn't valid UTF-8");
+        let signature_result = String::from_utf8(signature_after.into_vec()).unwrap();
 
         if signature_error == errors::olm_error() {
-            match Self::last_error(self.olm_account_ptr) {
-                OlmAccountError::OutputBufferTooSmall => {
-                    panic!("Buffer for OlmAccount's signature is too small!")
-                }
-                _ => panic!("Unknown error occurred while getting OlmAccount's identity keys!"),
-            }
+            errors::handle_fatal_error(Self::last_error(self.olm_account_ptr));
         }
 
         signature_result
@@ -331,14 +311,7 @@ impl OlmAccount {
         let _drop_random: Box<[u8]> = unsafe { Box::from_raw(random_ptr) };
 
         if generate_error == errors::olm_error() {
-            match Self::last_error(self.olm_account_ptr) {
-                OlmAccountError::NotEnoughRandom => {
-                    panic!("Insufficient random data for generating one time keys for OlmAccount!")
-                }
-                _ => {
-                    panic!("Unknown error occurred, while generating one time keys for OlmAccount!")
-                }
-            }
+            errors::handle_fatal_error(Self::last_error(self.olm_account_ptr));
         }
     }
 
@@ -349,6 +322,7 @@ impl OlmAccount {
     ///
     /// # Panics
     /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied one time keys buffer
+    /// * on malformed UTF-8 coding of the keys provided by libolm
     ///
     pub fn one_time_keys(&self) -> String {
         // get buffer length of OTKs
@@ -363,16 +337,10 @@ impl OlmAccount {
 
         // String is constructed from the OTKs buffer and memory is freed after exiting the scope.
         let otks_after: Box<[u8]> = unsafe { Box::from_raw(otks_ptr) };
-        let otks_result = String::from_utf8(otks_after.to_vec())
-            .expect("OlmAccount's one time keys aren't valid UTF-8");
+        let otks_result = String::from_utf8(otks_after.to_vec()).unwrap();
 
         if otks_error == errors::olm_error() {
-            match Self::last_error(self.olm_account_ptr) {
-                OlmAccountError::OutputBufferTooSmall => {
-                    panic!("Buffer for OlmAccount's one time keys is too small!")
-                }
-                _ => panic!("Unknown error occurred while getting OlmAccount's one time keys!"),
-            }
+            errors::handle_fatal_error(Self::last_error(self.olm_account_ptr));
         }
 
         otks_result

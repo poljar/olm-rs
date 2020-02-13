@@ -146,10 +146,12 @@ impl OlmSession {
         let olm_session_ptr = unsafe { olm_sys::olm_session(olm_session_buf_ptr as *mut _) };
         let error = f(olm_session_ptr);
         if error == errors::olm_error() {
-            if Self::last_error(olm_session_ptr) == OlmSessionError::NotEnoughRandom {
-                panic!("Not enough random data supplied for creation of outbound session!");
+            let last_error = Self::last_error(olm_session_ptr);
+            if last_error == OlmSessionError::NotEnoughRandom {
+                errors::handle_fatal_error(OlmSessionError::NotEnoughRandom);
             }
-            Err(Self::last_error(olm_session_ptr))
+
+            Err(last_error)
         } else {
             Ok(OlmSession {
                 olm_session_ptr,
@@ -184,6 +186,7 @@ impl OlmSession {
     ///
     /// # Panics
     /// * `OutputBufferTooSmall` if the supplied output buffer for the ID was too small
+    /// * on malformed UTF-8 coding of the session ID provided by libolm
     ///
     pub fn session_id(&self) -> String {
         let session_id_len = unsafe { olm_sys::olm_session_id_length(self.olm_session_ptr) };
@@ -199,16 +202,10 @@ impl OlmSession {
         };
 
         let session_id_after = unsafe { Box::from_raw(session_id_ptr) };
-        let session_id_result = String::from_utf8(session_id_after.to_vec())
-            .expect("OlmSession's session ID isn't valid UTF-8");
+        let session_id_result = String::from_utf8(session_id_after.to_vec()).unwrap();
 
         if error == errors::olm_error() {
-            match Self::last_error(self.olm_session_ptr) {
-                OlmSessionError::OutputBufferTooSmall => {
-                    panic!("Supplied output buffer for OlmSession's ID is too small!")
-                }
-                _ => panic!("Unknown error encountered when getting OlmSession's ID!"),
-            }
+            errors::handle_fatal_error(Self::last_error(self.olm_session_ptr));
         }
 
         session_id_result
@@ -221,6 +218,7 @@ impl OlmSession {
     ///
     /// # Panics
     /// * `OUTPUT_BUFFER_TOO_SMALL` for OlmSession's pickled buffer
+    /// * on malformed UTF-8 coding of the pickling provided by libolm
     ///
     pub fn pickle(&self, mode: PicklingMode) -> String {
         let pickled_len = unsafe { olm_sys::olm_pickle_session_length(self.olm_session_ptr) };
@@ -240,16 +238,10 @@ impl OlmSession {
         };
 
         let pickled_after = unsafe { Box::from_raw(pickled_ptr) };
-        let pickled_result = String::from_utf8(pickled_after.to_vec())
-            .expect("Pickling OlmSession isn't valid UTF-8");
+        let pickled_result = String::from_utf8(pickled_after.to_vec()).unwrap();
 
         if pickle_error == errors::olm_error() {
-            match Self::last_error(self.olm_session_ptr) {
-                OlmSessionError::OutputBufferTooSmall => {
-                    panic!("Buffer for pickled OlmSession is too small!")
-                }
-                _ => panic!("Unknown error occurred while pickling OlmSession!"),
-            }
+            errors::handle_fatal_error(Self::last_error(self.olm_session_ptr));
         }
 
         pickled_result
@@ -291,6 +283,7 @@ impl OlmSession {
     /// # Panics
     /// * `NotEnoughRandom` for too little supplied random data
     /// * `OutputBufferTooSmall` for encrypted message
+    /// * on malformed UTF-8 coding of the ciphertext provided by libolm
     ///
     pub fn encrypt(&self, plaintext: &str) -> String {
         let plaintext_buf = plaintext.as_bytes();
@@ -322,25 +315,18 @@ impl OlmSession {
         }
 
         let message_after = unsafe { Box::from_raw(message_ptr) };
-        let message_result = String::from_utf8(message_after.to_vec())
-            .expect("Ciphertext by OlmSession isn't valid UTF-8");
+        let message_result = String::from_utf8(message_after.to_vec()).unwrap();
 
         if encrypt_error == errors::olm_error() {
-            match Self::last_error(self.olm_session_ptr) {
-                OlmSessionError::NotEnoughRandom => {
-                    panic!("Not enough random data supplied for successfull encryption!")
-                }
-                OlmSessionError::OutputBufferTooSmall => {
-                    panic!("Output buffer for ciphertext is too small!")
-                }
-                _ => panic!("Unknown error encountered during encryption of a message!"),
-            }
+            errors::handle_fatal_error(Self::last_error(self.olm_session_ptr));
         }
 
         message_result
     }
 
-    /// Decrypts a message using this session.
+    /// Decrypts a message using this session. Decoding is lossy, meaing if
+    /// the decrypted plaintext contains invalid UTF-8 symbols, they will
+    /// be returned as `U+FFFD` (�).
     ///
     /// # C-API equivalent
     /// `olm_decrypt`
@@ -404,16 +390,15 @@ impl OlmSession {
 
         let decrypt_error = plaintext_result_len;
         if decrypt_error == errors::olm_error() {
-            if Self::last_error(self.olm_session_ptr) == OlmSessionError::OutputBufferTooSmall {
-                panic!("Output buffer for plaintext is too small when decrypting!");
+            let last_error = Self::last_error(self.olm_session_ptr);
+            if last_error == OlmSessionError::OutputBufferTooSmall {
+                errors::handle_fatal_error(OlmSessionError::OutputBufferTooSmall);
             }
-            return Err(Self::last_error(self.olm_session_ptr));
+            return Err(last_error);
         }
 
         let plaintext_after = unsafe { Box::from_raw(plaintext_ptr) };
-        let plaintext_result = String::from_utf8(plaintext_after[0..plaintext_result_len].to_vec())
-            .expect("Plaintext by OlmSession isn't valid UTF-8");
-        Ok(plaintext_result)
+        Ok(String::from_utf8_lossy(&plaintext_after[0..plaintext_result_len]).to_string())
     }
 
     /// The type of the next message that will be returned from encryption.
@@ -433,7 +418,7 @@ impl OlmSession {
         let message_type_error = message_type_result;
 
         if message_type_error == errors::olm_error() {
-            panic!("Unknown error encoutered, when getting the next encrypted message type from an OlmSession!");
+            errors::handle_fatal_error(Self::last_error(self.olm_session_ptr));
         }
 
         match message_type_result {
