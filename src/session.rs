@@ -28,7 +28,8 @@ use std::ffi::CStr;
 #[derive(Eq)]
 pub struct OlmSession {
     pub(crate) olm_session_ptr: *mut olm_sys::OlmSession,
-    olm_session_buf_ptr: *mut [u8],
+    #[used]
+    olm_session_buf: Vec<u8>,
 }
 
 impl OlmSession {
@@ -134,10 +135,10 @@ impl OlmSession {
     fn create_session_with<F: FnMut(*mut olm_sys::OlmSession) -> usize>(
         mut f: F,
     ) -> Result<OlmSession, OlmSessionError> {
-        let olm_session_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_session_size() }];
-        let olm_session_buf_ptr = Box::into_raw(olm_session_buf.into_boxed_slice());
+        let mut olm_session_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_session_size() }];
 
-        let olm_session_ptr = unsafe { olm_sys::olm_session(olm_session_buf_ptr as *mut _) };
+        let olm_session_ptr =
+            unsafe { olm_sys::olm_session(olm_session_buf.as_mut_ptr() as *mut _) };
         let error = f(olm_session_ptr);
         if error == errors::olm_error() {
             let last_error = Self::last_error(olm_session_ptr);
@@ -149,7 +150,7 @@ impl OlmSession {
         } else {
             Ok(OlmSession {
                 olm_session_ptr,
-                olm_session_buf_ptr,
+                olm_session_buf,
             })
         }
     }
@@ -537,7 +538,6 @@ impl Drop for OlmSession {
     fn drop(&mut self) {
         unsafe {
             olm_sys::olm_clear_session(self.olm_session_ptr);
-            let _drop_session_buf = Box::from_raw(self.olm_session_buf_ptr);
         }
     }
 }
