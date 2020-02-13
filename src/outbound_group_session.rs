@@ -25,6 +25,8 @@ use std::ffi::CStr;
 /// communication in a Megolm session.
 pub struct OlmOutboundGroupSession {
     pub group_session_ptr: *mut olm_sys::OlmOutboundGroupSession,
+    #[used]
+    group_session_buf: Vec<u8>,
 }
 
 impl OlmOutboundGroupSession {
@@ -37,13 +39,14 @@ impl OlmOutboundGroupSession {
     /// * `NotEnoughRandom` for `OlmOutboundGroupSession`'s creation
     ///
     pub fn new() -> Self {
-        let olm_outbound_group_session_buf: Vec<u8> =
+        let mut olm_outbound_group_session_buf: Vec<u8> =
             vec![0; unsafe { olm_sys::olm_outbound_group_session_size() }];
-        let olm_outbound_group_session_buf_ptr =
-            Box::into_raw(olm_outbound_group_session_buf.into_boxed_slice()) as *mut _;
 
-        let olm_outbound_group_session_ptr =
-            unsafe { olm_sys::olm_outbound_group_session(olm_outbound_group_session_buf_ptr) };
+        let olm_outbound_group_session_ptr = unsafe {
+            olm_sys::olm_outbound_group_session(
+                olm_outbound_group_session_buf.as_mut_ptr() as *mut _
+            )
+        };
 
         let random_len = unsafe {
             olm_sys::olm_init_outbound_group_session_random_length(olm_outbound_group_session_ptr)
@@ -65,6 +68,7 @@ impl OlmOutboundGroupSession {
 
         OlmOutboundGroupSession {
             group_session_ptr: olm_outbound_group_session_ptr,
+            group_session_buf: olm_outbound_group_session_buf,
         }
     }
 
@@ -116,13 +120,13 @@ impl OlmOutboundGroupSession {
         let pickled_len = pickled.len();
         let pickled_buf = unsafe { pickled.as_bytes_mut() };
 
-        let olm_outbound_group_session_buf: Vec<u8> =
+        let mut olm_outbound_group_session_buf: Vec<u8> =
             vec![0; unsafe { olm_sys::olm_outbound_group_session_size() }];
-        let olm_outbound_group_session_buf_ptr =
-            Box::into_raw(olm_outbound_group_session_buf.into_boxed_slice());
 
         let olm_outbound_group_session_ptr = unsafe {
-            olm_sys::olm_outbound_group_session(olm_outbound_group_session_buf_ptr as *mut _)
+            olm_sys::olm_outbound_group_session(
+                olm_outbound_group_session_buf.as_mut_ptr() as *mut _
+            )
         };
 
         let key = crate::convert_pickling_mode_to_key(mode);
@@ -142,6 +146,7 @@ impl OlmOutboundGroupSession {
         } else {
             Ok(OlmOutboundGroupSession {
                 group_session_ptr: olm_outbound_group_session_ptr,
+                group_session_buf: olm_outbound_group_session_buf,
             })
         }
     }
@@ -295,7 +300,6 @@ impl Drop for OlmOutboundGroupSession {
     fn drop(&mut self) {
         unsafe {
             olm_sys::olm_clear_outbound_group_session(self.group_session_ptr);
-            let _drop_session = Box::from_raw(self.group_session_ptr as *mut &[u8]);
         }
     }
 }
