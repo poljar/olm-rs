@@ -24,7 +24,8 @@ use std::ffi::CStr;
 /// communication in a Megolm session.
 pub struct OlmInboundGroupSession {
     pub(crate) group_session_ptr: *mut olm_sys::OlmInboundGroupSession,
-    group_session_buf_ptr: *mut [u8],
+    #[used]
+    group_session_buf: Vec<u8>,
 }
 
 impl OlmInboundGroupSession {
@@ -38,13 +39,11 @@ impl OlmInboundGroupSession {
     /// * `BadSessionKey` if session key is invalid
     ///
     pub fn new(key: &str) -> Result<Self, OlmGroupSessionError> {
-        let olm_inbound_group_session_buf: Vec<u8> =
+        let mut olm_inbound_group_session_buf: Vec<u8> =
             vec![0; unsafe { olm_sys::olm_inbound_group_session_size() }];
-        let olm_inbound_group_session_buf_ptr =
-            Box::into_raw(olm_inbound_group_session_buf.into_boxed_slice());
 
         let olm_inbound_group_session_ptr = unsafe {
-            olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf_ptr as *mut _)
+            olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf.as_mut_ptr() as *mut _)
         };
         let key_buf = key.as_bytes();
 
@@ -61,7 +60,7 @@ impl OlmInboundGroupSession {
         } else {
             Ok(OlmInboundGroupSession {
                 group_session_ptr: olm_inbound_group_session_ptr,
-                group_session_buf_ptr: olm_inbound_group_session_buf_ptr,
+                group_session_buf: olm_inbound_group_session_buf,
             })
         }
     }
@@ -76,13 +75,11 @@ impl OlmInboundGroupSession {
     /// * `BadSessionKey` if session key is invalid
     ///
     pub fn import(key: &str) -> Result<Self, OlmGroupSessionError> {
-        let olm_inbound_group_session_buf: Vec<u8> =
+        let mut olm_inbound_group_session_buf: Vec<u8> =
             vec![0; unsafe { olm_sys::olm_inbound_group_session_size() }];
-        let olm_inbound_group_session_buf_ptr =
-            Box::into_raw(olm_inbound_group_session_buf.into_boxed_slice());
 
         let olm_inbound_group_session_ptr = unsafe {
-            olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf_ptr as *mut _)
+            olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf.as_mut_ptr() as *mut _)
         };
 
         let key_buf = key.as_bytes();
@@ -101,7 +98,7 @@ impl OlmInboundGroupSession {
         } else {
             Ok(OlmInboundGroupSession {
                 group_session_ptr: olm_inbound_group_session_ptr,
-                group_session_buf_ptr: olm_inbound_group_session_buf_ptr,
+                group_session_buf: olm_inbound_group_session_buf,
             })
         }
     }
@@ -156,13 +153,11 @@ impl OlmInboundGroupSession {
         let pickled_len = pickled.len();
         let pickled_buf = unsafe { pickled.as_bytes_mut() };
 
-        let olm_inbound_group_session_buf: Vec<u8> =
+        let mut olm_inbound_group_session_buf: Vec<u8> =
             vec![0; unsafe { olm_sys::olm_inbound_group_session_size() }];
-        let olm_inbound_group_session_buf_ptr =
-            Box::into_raw(olm_inbound_group_session_buf.into_boxed_slice());
 
         let olm_inbound_group_session_ptr = unsafe {
-            olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf_ptr as *mut _)
+            olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf.as_mut_ptr() as *mut _)
         };
 
         let key = crate::convert_pickling_mode_to_key(mode);
@@ -182,7 +177,7 @@ impl OlmInboundGroupSession {
         } else {
             Ok(OlmInboundGroupSession {
                 group_session_ptr: olm_inbound_group_session_ptr,
-                group_session_buf_ptr: olm_inbound_group_session_buf_ptr,
+                group_session_buf: olm_inbound_group_session_buf,
             })
         }
     }
@@ -398,7 +393,6 @@ impl Drop for OlmInboundGroupSession {
     fn drop(&mut self) {
         unsafe {
             olm_sys::olm_clear_inbound_group_session(self.group_session_ptr);
-            let _drop_session_buf = Box::from_raw(self.group_session_buf_ptr);
         }
     }
 }
