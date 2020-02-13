@@ -184,19 +184,17 @@ impl OlmSession {
     ///
     pub fn session_id(&self) -> String {
         let session_id_len = unsafe { olm_sys::olm_session_id_length(self.olm_session_ptr) };
-        let session_id_buf: Vec<u8> = vec![0; session_id_len];
-        let session_id_ptr = Box::into_raw(session_id_buf.into_boxed_slice());
+        let mut session_id_buf: Vec<u8> = vec![0; session_id_len];
 
         let error = unsafe {
             olm_sys::olm_session_id(
                 self.olm_session_ptr,
-                session_id_ptr as *mut _,
+                session_id_buf.as_mut_ptr() as *mut _,
                 session_id_len,
             )
         };
 
-        let session_id_after = unsafe { Box::from_raw(session_id_ptr) };
-        let session_id_result = String::from_utf8(session_id_after.to_vec()).unwrap();
+        let session_id_result = String::from_utf8(session_id_buf).unwrap();
 
         if error == errors::olm_error() {
             errors::handle_fatal_error(Self::last_error(self.olm_session_ptr));
@@ -216,8 +214,7 @@ impl OlmSession {
     ///
     pub fn pickle(&self, mode: PicklingMode) -> String {
         let pickled_len = unsafe { olm_sys::olm_pickle_session_length(self.olm_session_ptr) };
-        let pickled_buf = vec![0; pickled_len];
-        let pickled_ptr = Box::into_raw(pickled_buf.into_boxed_slice());
+        let mut pickled_buf = vec![0; pickled_len];
 
         let key = crate::convert_pickling_mode_to_key(mode);
 
@@ -226,13 +223,12 @@ impl OlmSession {
                 self.olm_session_ptr,
                 key.as_ptr() as *const _,
                 key.len(),
-                pickled_ptr as *mut _,
+                pickled_buf.as_mut_ptr() as *mut _,
                 pickled_len,
             )
         };
 
-        let pickled_after = unsafe { Box::from_raw(pickled_ptr) };
-        let pickled_result = String::from_utf8(pickled_after.to_vec()).unwrap();
+        let pickled_result = String::from_utf8(pickled_buf).unwrap();
 
         if pickle_error == errors::olm_error() {
             errors::handle_fatal_error(Self::last_error(self.olm_session_ptr));
@@ -284,8 +280,7 @@ impl OlmSession {
         let plaintext_len = plaintext_buf.len();
         let message_len =
             unsafe { olm_sys::olm_encrypt_message_length(self.olm_session_ptr, plaintext_len) };
-        let message_buf: Vec<u8> = vec![0; message_len];
-        let message_ptr = Box::into_raw(message_buf.into_boxed_slice());
+        let mut message_buf: Vec<u8> = vec![0; message_len];
 
         let random_len = unsafe { olm_sys::olm_encrypt_random_length(self.olm_session_ptr) };
         let mut random_buf: Vec<u8> = vec![0; random_len];
@@ -298,13 +293,12 @@ impl OlmSession {
                 plaintext_len,
                 random_buf.as_mut_ptr() as *mut _,
                 random_len,
-                message_ptr as *mut _,
+                message_buf.as_mut_ptr() as *mut _,
                 message_len,
             )
         };
 
-        let message_after = unsafe { Box::from_raw(message_ptr) };
-        let message_result = String::from_utf8(message_after.to_vec()).unwrap();
+        let message_result = String::from_utf8(message_buf).unwrap();
 
         if encrypt_error == errors::olm_error() {
             errors::handle_fatal_error(Self::last_error(self.olm_session_ptr));
@@ -359,8 +353,7 @@ impl OlmSession {
             return Err(Self::last_error(self.olm_session_ptr));
         }
 
-        let plaintext_buf: Vec<u8> = vec![0; plaintext_max_len];
-        let plaintext_ptr = Box::into_raw(plaintext_buf.into_boxed_slice());
+        let mut plaintext_buf: Vec<u8> = vec![0; plaintext_max_len];
 
         let message_buf = unsafe { message.as_bytes_mut() };
         let message_len = message_buf.len();
@@ -372,7 +365,7 @@ impl OlmSession {
                 message_type_val,
                 message_ptr,
                 message_len,
-                plaintext_ptr as *mut _,
+                plaintext_buf.as_mut_ptr() as *mut _,
                 plaintext_max_len,
             )
         };
@@ -386,8 +379,8 @@ impl OlmSession {
             return Err(last_error);
         }
 
-        let plaintext_after = unsafe { Box::from_raw(plaintext_ptr) };
-        Ok(String::from_utf8_lossy(&plaintext_after[0..plaintext_result_len]).to_string())
+        plaintext_buf.truncate(plaintext_result_len);
+        Ok(String::from_utf8_lossy(&plaintext_buf).to_string())
     }
 
     /// The type of the next message that will be returned from encryption.

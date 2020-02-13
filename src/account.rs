@@ -108,10 +108,8 @@ impl OlmAccount {
     /// * on malformed UTF-8 coding for pickling provided by libolm
     ///
     pub fn pickle(&self, mode: PicklingMode) -> String {
-        let pickled_buf: Vec<u8> =
+        let mut pickled_buf: Vec<u8> =
             vec![0; unsafe { olm_sys::olm_pickle_account_length(self.olm_account_ptr) }];
-        let pickled_len = pickled_buf.len();
-        let pickled_ptr = Box::into_raw(pickled_buf.into_boxed_slice());
 
         let key = crate::convert_pickling_mode_to_key(mode);
 
@@ -120,13 +118,12 @@ impl OlmAccount {
                 self.olm_account_ptr,
                 key.as_ptr() as *const _,
                 key.len(),
-                pickled_ptr as *mut _,
-                pickled_len,
+                pickled_buf.as_mut_ptr() as *mut _,
+                pickled_buf.len(),
             )
         };
 
-        let pickled_after: Box<[u8]> = unsafe { Box::from_raw(pickled_ptr) };
-        let pickled_result = String::from_utf8(pickled_after.to_vec()).unwrap();
+        let pickled_result = String::from_utf8(pickled_buf).unwrap();
 
         if pickle_error == errors::olm_error() {
             errors::handle_fatal_error(Self::last_error(self.olm_account_ptr));
@@ -186,22 +183,20 @@ impl OlmAccount {
     pub fn identity_keys(&self) -> String {
         // get buffer length of identity keys
         let keys_len = unsafe { olm_sys::olm_account_identity_keys_length(self.olm_account_ptr) };
-        let identity_keys_buf: Vec<u8> = vec![0; keys_len];
-        let identity_keys_ptr = Box::into_raw(identity_keys_buf.into_boxed_slice());
+        let mut identity_keys_buf: Vec<u8> = vec![0; keys_len];
 
         // write keys data in the keys buffer
         let identity_keys_error = unsafe {
             olm_sys::olm_account_identity_keys(
                 self.olm_account_ptr,
-                identity_keys_ptr as *mut _,
+                identity_keys_buf.as_mut_ptr() as *mut _,
                 keys_len,
             )
         };
 
         // String is constructed from the keys buffer and memory is freed after exiting the scope.
         // No memory should be leaked.
-        let identity_keys_after: Box<[u8]> = unsafe { Box::from_raw(identity_keys_ptr) };
-        let identity_keys_result = String::from_utf8(identity_keys_after.to_vec()).unwrap();
+        let identity_keys_result = String::from_utf8(identity_keys_buf).unwrap();
 
         if identity_keys_error == errors::olm_error() {
             errors::handle_fatal_error(Self::last_error(self.olm_account_ptr));
@@ -245,21 +240,19 @@ impl OlmAccount {
         let message_ptr = message_buf.as_ptr() as *const _;
 
         let signature_len = unsafe { olm_sys::olm_account_signature_length(self.olm_account_ptr) };
-        let signature_buf: Vec<u8> = vec![0; signature_len];
-        let signature_ptr = Box::into_raw(signature_buf.into_boxed_slice());
+        let mut signature_buf: Vec<u8> = vec![0; signature_len];
 
         let signature_error = unsafe {
             olm_sys::olm_account_sign(
                 self.olm_account_ptr,
                 message_ptr,
                 message_buf.len(),
-                signature_ptr as *mut _,
+                signature_buf.as_mut_ptr() as *mut _,
                 signature_len,
             )
         };
 
-        let signature_after: Box<[u8]> = unsafe { Box::from_raw(signature_ptr) };
-        let signature_result = String::from_utf8(signature_after.into_vec()).unwrap();
+        let signature_result = String::from_utf8(signature_buf).unwrap();
 
         if signature_error == errors::olm_error() {
             errors::handle_fatal_error(Self::last_error(self.olm_account_ptr));
@@ -325,17 +318,19 @@ impl OlmAccount {
     pub fn one_time_keys(&self) -> String {
         // get buffer length of OTKs
         let otks_len = unsafe { olm_sys::olm_account_one_time_keys_length(self.olm_account_ptr) };
-        let otks_buf: Vec<u8> = vec![0; otks_len];
-        let otks_ptr = Box::into_raw(otks_buf.into_boxed_slice());
+        let mut otks_buf: Vec<u8> = vec![0; otks_len];
 
         // write OTKs data in the OTKs buffer
         let otks_error = unsafe {
-            olm_sys::olm_account_one_time_keys(self.olm_account_ptr, otks_ptr as *mut _, otks_len)
+            olm_sys::olm_account_one_time_keys(
+                self.olm_account_ptr,
+                otks_buf.as_mut_ptr() as *mut _,
+                otks_len,
+            )
         };
 
         // String is constructed from the OTKs buffer and memory is freed after exiting the scope.
-        let otks_after: Box<[u8]> = unsafe { Box::from_raw(otks_ptr) };
-        let otks_result = String::from_utf8(otks_after.to_vec()).unwrap();
+        let otks_result = String::from_utf8(otks_buf).unwrap();
 
         if otks_error == errors::olm_error() {
             errors::handle_fatal_error(Self::last_error(self.olm_account_ptr));
