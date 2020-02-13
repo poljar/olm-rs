@@ -114,9 +114,8 @@ impl OlmSession {
                 unsafe { olm_sys::olm_create_outbound_session_random_length(olm_session_ptr) };
             let mut random_buf: Vec<u8> = vec![0; random_len];
             let _ = getrandom(random_buf.as_mut_slice());
-            let random_ptr = Box::into_raw(random_buf.into_boxed_slice());
 
-            let error = unsafe {
+            unsafe {
                 olm_sys::olm_create_outbound_session(
                     olm_session_ptr,
                     account.olm_account_ptr,
@@ -124,15 +123,10 @@ impl OlmSession {
                     their_identity_key_buf.len(),
                     their_one_time_key_buf.as_ptr() as *const _,
                     their_one_time_key_buf.len(),
-                    random_ptr as *mut _,
+                    random_buf.as_mut_ptr() as *mut _,
                     random_len,
                 )
-            };
-            unsafe {
-                Box::from_raw(random_ptr);
             }
-
-            error
         })
     }
 
@@ -296,23 +290,18 @@ impl OlmSession {
         let random_len = unsafe { olm_sys::olm_encrypt_random_length(self.olm_session_ptr) };
         let mut random_buf: Vec<u8> = vec![0; random_len];
         let _ = getrandom(random_buf.as_mut_slice());
-        let random_ptr = Box::into_raw(random_buf.into_boxed_slice());
 
         let encrypt_error = unsafe {
             olm_sys::olm_encrypt(
                 self.olm_session_ptr,
                 plaintext_buf.as_ptr() as *const _,
                 plaintext_len,
-                random_ptr as *mut _,
+                random_buf.as_mut_ptr() as *mut _,
                 random_len,
                 message_ptr as *mut _,
                 message_len,
             )
         };
-
-        unsafe {
-            Box::from_raw(random_ptr);
-        }
 
         let message_after = unsafe { Box::from_raw(message_ptr) };
         let message_result = String::from_utf8(message_after.to_vec()).unwrap();

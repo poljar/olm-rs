@@ -64,14 +64,15 @@ impl OlmAccount {
         let random_len = unsafe { olm_sys::olm_create_account_random_length(olm_account_ptr) };
         let mut random_buf: Vec<u8> = vec![0; random_len];
         let _ = getrandom(random_buf.as_mut_slice());
-        let random_ptr = Box::into_raw(random_buf.into_boxed_slice());
 
         // create OlmAccount with supplied random data
         let create_error = unsafe {
-            olm_sys::olm_create_account(olm_account_ptr, random_ptr as *mut _, random_len)
+            olm_sys::olm_create_account(
+                olm_account_ptr,
+                random_buf.as_mut_ptr() as *mut _,
+                random_len,
+            )
         };
-
-        let _drop_random_buf: Box<[u8]> = unsafe { Box::from_raw(random_ptr as *mut _) };
 
         if create_error == errors::olm_error() {
             errors::handle_fatal_error(Self::last_error(olm_account_ptr));
@@ -296,19 +297,16 @@ impl OlmAccount {
         // Construct and populate random buffer
         let mut random_buf: Vec<u8> = vec![0; random_len];
         let _ = getrandom(random_buf.as_mut_slice());
-        let random_ptr = Box::into_raw(random_buf.into_boxed_slice());
 
         // Call function for generating one time keys
         let generate_error = unsafe {
             olm_sys::olm_account_generate_one_time_keys(
                 self.olm_account_ptr,
                 number_of_keys,
-                random_ptr as *mut _,
+                random_buf.as_mut_ptr() as *mut _,
                 random_len,
             )
         };
-
-        let _drop_random: Box<[u8]> = unsafe { Box::from_raw(random_ptr) };
 
         if generate_error == errors::olm_error() {
             errors::handle_fatal_error(Self::last_error(self.olm_account_ptr));

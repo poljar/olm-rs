@@ -50,17 +50,14 @@ impl OlmOutboundGroupSession {
         };
         let mut random_buf: Vec<u8> = vec![0; random_len];
         let _ = getrandom(random_buf.as_mut_slice());
-        let random_ptr = Box::into_raw(random_buf.into_boxed_slice());
 
         let create_error = unsafe {
             olm_sys::olm_init_outbound_group_session(
                 olm_outbound_group_session_ptr,
-                random_ptr as *mut _,
+                random_buf.as_mut_ptr() as *mut _,
                 random_len,
             )
         };
-
-        unsafe { Box::from_raw(random_ptr) };
 
         if create_error == errors::olm_error() {
             errors::handle_fatal_error(olm_outbound_group_session_ptr);
