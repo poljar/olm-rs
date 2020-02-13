@@ -113,6 +113,7 @@ impl OlmInboundGroupSession {
     ///
     /// # Panics
     /// * `OutputBufferTooSmall` for `OlmInboundGroupSession`'s pickled buffer
+    /// * on malfromed UTF-8 coding of the pickling provided by libolm
     ///
     pub fn pickle(&self, mode: PicklingMode) -> String {
         let pickled_buf =
@@ -136,19 +137,13 @@ impl OlmInboundGroupSession {
         };
 
         let pickled_after: Box<[u8]> = unsafe { Box::from_raw(pickled_ptr) };
-        let pickled_result = String::from_utf8(pickled_after.to_vec())
-            .expect("Pickled InboundGroupSession isn't valid UTF-8");
+        let pickled_result = String::from_utf8(pickled_after.to_vec()).unwrap();
 
         if pickle_error == errors::olm_error() {
-            match Self::last_error(self.group_session_ptr) {
-                OlmGroupSessionError::OutputBufferTooSmall => {
-                    panic!("Buffer for pickled OlmInboundGroupSession is too small!")
-                }
-                _ => panic!("Unknown error occurred while pickling OlmInboundGroupSession!"),
-            }
-        } else {
-            pickled_result
+            errors::handle_fatal_error(Self::last_error(self.group_session_ptr));
         }
+
+        pickled_result
     }
 
     /// Deserialises from encrypted Base64 that was previously obtained by pickling an `OlmInboundGroupSession`.
@@ -218,7 +213,9 @@ impl OlmInboundGroupSession {
         }
     }
 
-    /// Decrypts ciphertext received for this group session.
+    /// Decrypts ciphertext received for this group session. Decoding is lossy, meaing if
+    /// the decrypted plaintext contains invalid UTF-8 symbols, they will
+    /// be returned as `U+FFFD` (�).
     ///
     /// Returns both plaintext and message index.
     ///
@@ -281,16 +278,17 @@ impl OlmInboundGroupSession {
             let error_code = Self::last_error(self.group_session_ptr);
 
             if error_code == OlmGroupSessionError::OutputBufferTooSmall {
-                panic!("Output buffer for decrypting ciphertext from group session too small!");
+                errors::handle_fatal_error(OlmGroupSessionError::OutputBufferTooSmall);
             }
 
             return Err(error_code);
         }
 
         let plaintext_after = unsafe { Box::from_raw(plaintext_ptr) };
-        let plaintext = String::from_utf8(plaintext_after[0..plaintext_len].to_vec())
-            .expect("Decrypted plaintext for InboundGroupSession isn't valid UTF-8");
-        Ok((plaintext, message_index))
+        Ok((
+            String::from_utf8_lossy(&plaintext_after[0..plaintext_len]).to_string(),
+            message_index,
+        ))
     }
 
     /// Export the base64-encoded ratchet key for this session, at the given index,
@@ -305,6 +303,7 @@ impl OlmInboundGroupSession {
     ///
     /// # Panics
     /// * `OutputBufferTooSmall` for export buffer
+    /// * on malformed UTF-8 coding of the exported session provided by libolm
     ///
     pub fn export(&self, message_index: u32) -> Result<String, OlmGroupSessionError> {
         let key_len =
@@ -322,13 +321,12 @@ impl OlmInboundGroupSession {
         };
 
         let key_after = unsafe { Box::from_raw(key_ptr) };
-        let export_result = String::from_utf8(key_after.to_vec())
-            .expect("InboundGroupSession's export isn't valid UTF-8");
+        let export_result = String::from_utf8(key_after.to_vec()).unwrap();
 
         if export_error == errors::olm_error() {
             let error_code = Self::last_error(self.group_session_ptr);
             if error_code == OlmGroupSessionError::OutputBufferTooSmall {
-                panic!("Output buffer was too small when exporting an OlmInboundGroupSession!");
+                errors::handle_fatal_error(OlmGroupSessionError::OutputBufferTooSmall);
             }
 
             Err(error_code)
@@ -353,6 +351,7 @@ impl OlmInboundGroupSession {
     ///
     /// # Panics
     /// * `OutputBufferTooSmall` for session ID buffer
+    /// * on malformed UTF-8 coding of the session ID provided by libolm
     ///
     pub fn session_id(&self) -> String {
         let session_id_len =
@@ -369,18 +368,10 @@ impl OlmInboundGroupSession {
         };
 
         let session_id_after = unsafe { Box::from_raw(session_id_ptr) };
-        let session_id_result = String::from_utf8(session_id_after.to_vec())
-            .expect("InboundGroupSession's session ID isn't valid UTF-8");
+        let session_id_result = String::from_utf8(session_id_after.to_vec()).unwrap();
 
         if session_id_error == errors::olm_error() {
-            match Self::last_error(self.group_session_ptr) {
-                OlmGroupSessionError::OutputBufferTooSmall => panic!(
-                    "The output buffer for the InboundGroupSession's session ID was too small!"
-                ),
-                _ => panic!(
-                    "Unknown error encountered when getting the InboundGroupSession's session ID!"
-                ),
-            }
+            errors::handle_fatal_error(Self::last_error(self.group_session_ptr));
         }
 
         session_id_result
