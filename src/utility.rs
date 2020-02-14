@@ -70,23 +70,21 @@ impl OlmUtility {
     ///
     pub fn sha256_bytes(&self, input_buf: &[u8]) -> String {
         let output_len = unsafe { olm_sys::olm_sha256_length(self.olm_utility_ptr) };
-        let output_buf = vec![0; output_len];
-        let output_ptr = Box::into_raw(output_buf.into_boxed_slice());
+        let mut output_buf = vec![0; output_len];
 
         let sha256_error = unsafe {
             olm_sys::olm_sha256(
                 self.olm_utility_ptr,
                 input_buf.as_ptr() as *const _,
                 input_buf.len(),
-                output_ptr as *mut _,
+                output_buf.as_mut_ptr() as *mut _,
                 output_len,
             )
         };
 
-        let output_after = unsafe { Box::from_raw(output_ptr) };
         // We assume a correct implementation of the SHA256 function here,
         // that always returns a valid UTF-8 string.
-        let sha256_result = String::from_utf8(output_after.to_vec()).unwrap();
+        let sha256_result = String::from_utf8(output_buf).unwrap();
 
         // Errors from sha256 are fatal
         if sha256_error == errors::olm_error() {
