@@ -371,21 +371,6 @@ impl OlmAccount {
         }
     }
 
-    /// Convenience function that returns the parsed result of `OlmAccount::identity_keys()`.
-    /// As a result everything mentioned for that function applies here as well.
-    pub fn parsed_identity_keys(&self) -> IdentityKeys {
-        let identity_keys = self.identity_keys();
-        let identity_keys_split: Vec<&str> = identity_keys.split('"').collect();
-
-        // We parse as follows, illustrated with example output from identity_keys():
-        // {"curve25519":"R1sNKJt6FjeCaKy8HuUTRe/YvoDgcYXxcG1mMHZNrnA","ed25519":"O8/IG5pcHBlffgmRTAOBeOduz7apOifh0uwbhaztDls"}
-        // 0|----1-----|2|------------------3------------------------|4|---5---|6|-------------------7-----------------------|8
-        IdentityKeys {
-            curve25519: identity_keys_split[3].into(),
-            ed25519: identity_keys_split[7].into(),
-        }
-    }
-
     /// Creates an inbound session for sending/receiving messages from a received 'prekey' message.
     ///
     /// # Errors
