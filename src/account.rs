@@ -92,6 +92,26 @@ impl OneTimeKeys {
     pub fn curve25519(&self) -> &HashMap<String, String> {
         &self.keys["curve25519"]
     }
+
+    pub fn get(&self, k: &str) -> Option<&HashMap<String, String>> {
+        self.keys.get(k)
+    }
+
+    pub fn values(&self) -> Values<String, HashMap<String, String>> {
+        self.keys.values()
+    }
+
+    pub fn keys(&self) -> Keys<String, HashMap<String, String>> {
+        self.keys.keys()
+    }
+
+    pub fn iter(&self) -> Iter<String, HashMap<String, String>> {
+        self.keys.iter()
+    }
+
+    pub fn contains_key(&self, k: &str) -> bool {
+        self.keys.contains_key(k)
+    }
 }
 
 impl OlmAccount {
