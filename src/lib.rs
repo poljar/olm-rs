@@ -39,6 +39,23 @@ pub mod outbound_group_session;
 pub mod session;
 pub mod utility;
 
+use getrandom as random;
+
+/// A getrandom wrapper that panics if the call is unsuccessful.
+///
+/// # Arguments
+///
+/// * `buffer` - The buffer that should be filled with random data.
+///
+/// # Panics
+///
+/// Panics if the operating system can't provide enough random data.
+pub(crate) fn getrandom(buffer: &mut [u8]) {
+    random::getrandom(buffer).expect(
+        "Operating system didn't provide enough random data to securely generate the private keys.",
+    );
+}
+
 /// Used for storing the version number of libolm.
 /// Solely returned by [`get_library_version()`](fn.get_library_version.html).
 #[derive(Debug, PartialEq)]
