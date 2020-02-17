@@ -16,8 +16,8 @@
 
 use crate::errors;
 use crate::errors::OlmGroupSessionError;
+use crate::getrandom;
 use crate::PicklingMode;
-use getrandom::getrandom;
 use olm_sys;
 use std::ffi::CStr;
 
@@ -52,7 +52,7 @@ impl OlmOutboundGroupSession {
             olm_sys::olm_init_outbound_group_session_random_length(olm_outbound_group_session_ptr)
         };
         let mut random_buf: Vec<u8> = vec![0; random_len];
-        let _ = getrandom(random_buf.as_mut_slice());
+        getrandom(&mut random_buf);
 
         let create_error = unsafe {
             olm_sys::olm_init_outbound_group_session(

@@ -16,9 +16,9 @@
 
 use crate::errors;
 use crate::errors::OlmAccountError;
+use crate::getrandom;
 use crate::session::OlmSession;
 use crate::PicklingMode;
-use getrandom::getrandom;
 use olm_sys;
 use std::ffi::CStr;
 
@@ -64,7 +64,7 @@ impl OlmAccount {
         // determine optimal length of the random buffer
         let random_len = unsafe { olm_sys::olm_create_account_random_length(olm_account_ptr) };
         let mut random_buf: Vec<u8> = vec![0; random_len];
-        let _ = getrandom(random_buf.as_mut_slice());
+        getrandom(&mut random_buf);
 
         // create OlmAccount with supplied random data
         let create_error = unsafe {
@@ -290,7 +290,7 @@ impl OlmAccount {
 
         // Construct and populate random buffer
         let mut random_buf: Vec<u8> = vec![0; random_len];
-        let _ = getrandom(random_buf.as_mut_slice());
+        getrandom(&mut random_buf);
 
         // Call function for generating one time keys
         let generate_error = unsafe {
