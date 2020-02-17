@@ -9,9 +9,15 @@ readme = "README.md"
 repository = "https://gitlab.gnome.org/jhaye/olm-rs"
 edition = "2018"
 
+[features]
+default = ["deserialization"]
+deserialization = ["serde", "serde_json"]
+
 [dependencies]
 olm-sys = "0.1.5"
 getrandom = "0.1.14"
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_json = { version = "*", optional = true }
 
 [dev-dependencies]
 json = "0.12.1"

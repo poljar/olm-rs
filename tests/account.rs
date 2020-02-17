@@ -3,12 +3,9 @@ use olm_rs::{account::OlmAccount, utility::OlmUtility};
 #[test]
 fn identity_keys_valid() {
     let olm_account = OlmAccount::new();
-    // verify length of entire JSON object
     let identity_keys = olm_account.identity_keys();
-    assert_eq!(identity_keys.len(), 116);
-    let keys_json = json::parse(&identity_keys).unwrap();
-    let curve25519 = String::from(keys_json["curve25519"].as_str().unwrap());
-    let ed25519 = String::from(keys_json["ed25519"].as_str().unwrap());
+    let curve25519 = identity_keys.curve25519();
+    let ed25519 = identity_keys.ed25519();
     // verify encoded keys length
     assert_eq!(curve25519.len(), 43);
     assert_eq!(ed25519.len(), 43);
@@ -26,8 +23,8 @@ fn signatures_valid() {
     base64::decode(&signature).unwrap();
 
     let utility = OlmUtility::new();
-    let ed25519_key_json = json::parse(&olm_account.identity_keys()).unwrap();
-    let ed25519_key = ed25519_key_json["ed25519"].as_str().unwrap();
+    let identity_keys = olm_account.identity_keys();
+    let ed25519_key = identity_keys.ed25519();
     assert!(utility
         .ed25519_verify(&ed25519_key, message, &mut signature)
         .unwrap());
@@ -73,10 +70,10 @@ fn remove_one_time_keys() {
     account_b.generate_one_time_keys(1);
 
     let otks = json::parse(&account_b.one_time_keys()).unwrap();
-    let identity_keys = json::parse(&account_b.identity_keys()).unwrap();
+    let identity_keys = account_b.identity_keys();
     let session = account_a
         .create_outbound_session(
-            &identity_keys["curve25519"].as_str().unwrap(),
+            &identity_keys.curve25519(),
             &otks["curve25519"]
                 .entries()
                 .nth(0)
@@ -107,10 +104,10 @@ fn remove_one_time_keys_fails() {
     account_b.generate_one_time_keys(1);
 
     let otks = json::parse(&account_b.one_time_keys()).unwrap();
-    let identity_keys = json::parse(&account_b.identity_keys()).unwrap();
+    let identity_keys = account_b.identity_keys();
     let session = account_a
         .create_outbound_session(
-            &identity_keys["curve25519"].as_str().unwrap(),
+            &identity_keys.curve25519(),
             &otks["curve25519"]["AAAAAQ"].as_str().unwrap(),
         )
         .unwrap();

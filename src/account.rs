@@ -22,12 +22,17 @@ use crate::PicklingMode;
 use olm_sys;
 use std::ffi::CStr;
 
+#[cfg(feature = "deserialization")]
+use serde::Deserialize;
+#[cfg(feature = "deserialization")]
+use std::collections::HashMap;
+
 /// An olm account manages all cryptographic keys used on a device.
 /// ```
 /// use olm_rs::account::OlmAccount;
 ///
 /// let olm_account = OlmAccount::new();
-/// println!("{}", olm_account.identity_keys());
+/// println!("{:?}", olm_account.identity_keys());
 /// ```
 pub struct OlmAccount {
     /// Pointer by which libolm acquires the data saved in an instance of OlmAccount
@@ -36,10 +41,27 @@ pub struct OlmAccount {
     olm_account_buf: Vec<u8>,
 }
 
+#[cfg(feature = "deserialization")]
 /// Struct representing the parsed result of `OlmAccount::identity_keys()`.
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct IdentityKeys {
-    pub curve25519: String,
-    pub ed25519: String,
+    #[serde(flatten)]
+    keys: HashMap<String, String>,
+}
+
+#[cfg(feature = "deserialization")]
+impl IdentityKeys {
+    pub fn ed25519(&self) -> &str {
+        &self.keys["ed25519"]
+    }
+    pub fn curve25519(&self) -> &str {
+        &self.keys["curve25519"]
+    }
+
+    pub fn get(&self, k: &str) -> Option<&str> {
+        let ret = self.keys.get(k);
+        ret.map(|x| &**x)
+    }
 }
 
 impl OlmAccount {
@@ -172,16 +194,7 @@ impl OlmAccount {
         }
     }
 
-    /// Returns the account's public identity keys already formatted as JSON and BASE64.
-    ///
-    /// # C-API equivalent
-    /// `olm_account_identity_keys`
-    ///
-    /// # Panics
-    /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied identity keys buffer
-    /// * on malformed UTF-8 coding of the identity keys provided by libolm
-    ///
-    pub fn identity_keys(&self) -> String {
+    pub(crate) fn identity_keys_helper(&self) -> String {
         // get buffer length of identity keys
         let keys_len = unsafe { olm_sys::olm_account_identity_keys_length(self.olm_account_ptr) };
         let mut identity_keys_buf: Vec<u8> = vec![0; keys_len];
@@ -204,6 +217,27 @@ impl OlmAccount {
         }
 
         identity_keys_result
+    }
+
+    /// Returns the account's public identity keys already formatted as JSON and BASE64.
+    ///
+    /// # C-API equivalent
+    /// `olm_account_identity_keys`
+    ///
+    /// # Panics
+    /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied identity keys buffer
+    /// * on malformed UTF-8 coding of the identity keys provided by libolm
+    ///
+    #[cfg(not(feature = "deserialization"))]
+    pub fn identity_keys(&self) -> String {
+        self.identity_keys_helper()
+    }
+
+    #[cfg(feature = "deserialization")]
+    pub fn identity_keys(&self) -> IdentityKeys {
+        let deserialized: IdentityKeys = serde_json::from_str(&self.identity_keys_helper())
+            .expect("Can't deserialize identity keys");
+        deserialized
     }
 
     /// Returns the last error that occurred for an OlmAccount.
@@ -432,4 +466,17 @@ impl Drop for OlmAccount {
             olm_sys::olm_clear_account(self.olm_account_ptr);
         }
     }
+}
+
+#[cfg(feature = "deserialization")]
+#[test]
+fn parsed_keys() {
+    let account = OlmAccount::new();
+    let identity_keys = json::parse(&account.identity_keys_helper()).unwrap();
+    let identity_keys_parsed = account.identity_keys();
+    assert_eq!(
+        identity_keys_parsed.curve25519(),
+        identity_keys["curve25519"]
+    );
+    assert_eq!(identity_keys_parsed.ed25519(), identity_keys["ed25519"]);
 }
