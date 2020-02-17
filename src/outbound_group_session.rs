@@ -24,7 +24,7 @@ use std::ffi::CStr;
 /// An out-bound group session is responsible for encrypting outgoing
 /// communication in a Megolm session.
 pub struct OlmOutboundGroupSession {
-    pub group_session_ptr: *mut olm_sys::OlmOutboundGroupSession,
+    group_session_ptr: *mut olm_sys::OlmOutboundGroupSession,
     #[used]
     group_session_buf: Vec<u8>,
 }

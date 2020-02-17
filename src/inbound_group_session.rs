@@ -23,7 +23,7 @@ use std::ffi::CStr;
 /// An in-bound group session is responsible for decrypting incoming
 /// communication in a Megolm session.
 pub struct OlmInboundGroupSession {
-    pub(crate) group_session_ptr: *mut olm_sys::OlmInboundGroupSession,
+    group_session_ptr: *mut olm_sys::OlmInboundGroupSession,
     #[used]
     group_session_buf: Vec<u8>,
 }
