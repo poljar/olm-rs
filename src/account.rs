@@ -251,9 +251,7 @@ impl OlmAccount {
 
     #[cfg(feature = "deserialization")]
     pub fn identity_keys(&self) -> IdentityKeys {
-        let deserialized: IdentityKeys = serde_json::from_str(&self.identity_keys_helper())
-            .expect("Can't deserialize identity keys");
-        deserialized
+        serde_json::from_str(&self.identity_keys_helper()).expect("Can't deserialize identity keys")
     }
 
     /// Returns the last error that occurred for an OlmAccount.
