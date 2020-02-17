@@ -1,4 +1,4 @@
-use olm_rs::{account::OlmAccount, session::OlmSession, utility::OlmUtility};
+use olm_rs::{account::OlmAccount, utility::OlmUtility};
 
 #[test]
 fn identity_keys_valid() {
@@ -74,18 +74,18 @@ fn remove_one_time_keys() {
 
     let otks = json::parse(&account_b.one_time_keys()).unwrap();
     let identity_keys = json::parse(&account_b.identity_keys()).unwrap();
-    let session = OlmSession::create_outbound_session(
-        &account_a,
-        &identity_keys["curve25519"].as_str().unwrap(),
-        &otks["curve25519"]
-            .entries()
-            .nth(0)
-            .unwrap()
-            .1
-            .as_str()
-            .unwrap(),
-    )
-    .unwrap();
+    let session = account_a
+        .create_outbound_session(
+            &identity_keys["curve25519"].as_str().unwrap(),
+            &otks["curve25519"]
+                .entries()
+                .nth(0)
+                .unwrap()
+                .1
+                .as_str()
+                .unwrap(),
+        )
+        .unwrap();
 
     assert_eq!(1, otks["curve25519"].len());
 
@@ -108,12 +108,12 @@ fn remove_one_time_keys_fails() {
 
     let otks = json::parse(&account_b.one_time_keys()).unwrap();
     let identity_keys = json::parse(&account_b.identity_keys()).unwrap();
-    let session = OlmSession::create_outbound_session(
-        &account_a,
-        &identity_keys["curve25519"].as_str().unwrap(),
-        &otks["curve25519"]["AAAAAQ"].as_str().unwrap(),
-    )
-    .unwrap();
+    let session = account_a
+        .create_outbound_session(
+            &identity_keys["curve25519"].as_str().unwrap(),
+            &otks["curve25519"]["AAAAAQ"].as_str().unwrap(),
+        )
+        .unwrap();
 
     assert_eq!(1, otks["curve25519"].len());
 

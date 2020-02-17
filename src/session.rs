@@ -44,7 +44,7 @@ impl OlmSession {
     /// * `BadMessageFormat`
     /// * `BadMessageKeyId`
     ///
-    pub fn create_inbound_session(
+    pub(crate) fn create_inbound_session(
         account: &OlmAccount,
         mut one_time_key_message: String,
     ) -> Result<Self, OlmSessionError> {
@@ -70,7 +70,7 @@ impl OlmSession {
     /// * `BadMessageFormat`
     /// * `BadMessageKeyId`
     ///
-    pub fn create_inbound_session_from(
+    pub(crate) fn create_inbound_session_from(
         account: &OlmAccount,
         their_identity_key: &str,
         mut one_time_key_message: String,
@@ -103,7 +103,7 @@ impl OlmSession {
     /// # Panics
     /// * `NotEnoughRandom` if not enough random data was supplied
     ///
-    pub fn create_outbound_session(
+    pub(crate) fn create_outbound_session(
         account: &OlmAccount,
         their_identity_key: &str,
         their_one_time_key: &str,

@@ -15,7 +15,7 @@
 //! This module wraps around all functions following the pattern `olm_account_*`.
 
 use crate::errors;
-use crate::errors::OlmAccountError;
+use crate::errors::{OlmAccountError, OlmSessionError};
 use crate::getrandom;
 use crate::session::OlmSession;
 use crate::PicklingMode;
@@ -384,6 +384,54 @@ impl OlmAccount {
             curve25519: identity_keys_split[3].into(),
             ed25519: identity_keys_split[7].into(),
         }
+    }
+
+    /// Creates an inbound session for sending/receiving messages from a received 'prekey' message.
+    ///
+    /// # Errors
+    /// * `InvalidBase64`
+    /// * `BadMessageVersion`
+    /// * `BadMessageFormat`
+    /// * `BadMessageKeyId`
+    ///
+    pub fn create_inbound_session(
+        &self,
+        one_time_key_message: String,
+    ) -> Result<OlmSession, OlmSessionError> {
+        OlmSession::create_inbound_session(self, one_time_key_message)
+    }
+
+    /// Creates an inbound session for sending/receiving messages from a received 'prekey' message.
+    ///
+    /// # Errors
+    /// * `InvalidBase64`
+    /// * `BadMessageVersion`
+    /// * `BadMessageFormat`
+    /// * `BadMessageKeyId`
+    ///
+    pub fn create_inbound_session_from(
+        &self,
+        their_identity_key: &str,
+        one_time_key_message: String,
+    ) -> Result<OlmSession, OlmSessionError> {
+        OlmSession::create_inbound_session_from(self, their_identity_key, one_time_key_message)
+    }
+
+    /// Creates an outbound session for sending messages to a specific
+    /// identity and one time key.
+    ///
+    /// # Errors
+    /// * `InvalidBase64` for invalid base64 coding on supplied arguments
+    ///
+    /// # Panics
+    /// * `NotEnoughRandom` if not enough random data was supplied
+    ///
+    pub fn create_outbound_session(
+        &self,
+        their_identity_key: &str,
+        their_one_time_key: &str,
+    ) -> Result<OlmSession, OlmSessionError> {
+        OlmSession::create_outbound_session(self, their_identity_key, their_one_time_key)
     }
 }
 

@@ -26,8 +26,9 @@ fn session_pickling_valid() {
     let account_a = OlmAccount::unpickle(pickled_account_a, PicklingMode::Unencrypted).unwrap();
     let identity_key_b = String::from("qIEr3TWcJQt4CP8QoKKJcCaukByIOpgh6erBkhLEa2o");
     let one_time_key_b = String::from("WzsbsjD85iB1R32iWxfJdwkgmdz29ClMbJSJziECYwk");
-    let outbound_session =
-        OlmSession::create_outbound_session(&account_a, &identity_key_b, &one_time_key_b).unwrap();
+    let outbound_session = account_a
+        .create_outbound_session(&identity_key_b, &one_time_key_b)
+        .unwrap();
 
     let session_id_before = outbound_session.session_id();
     let pickled_session = outbound_session.pickle(PicklingMode::Unencrypted);
@@ -44,8 +45,9 @@ fn session_pickling_fails_on_wrong_key() {
     let account_a = OlmAccount::unpickle(pickled_account_a, PicklingMode::Unencrypted).unwrap();
     let identity_key_b = String::from("qIEr3TWcJQt4CP8QoKKJcCaukByIOpgh6erBkhLEa2o");
     let one_time_key_b = String::from("WzsbsjD85iB1R32iWxfJdwkgmdz29ClMbJSJziECYwk");
-    let outbound_session =
-        OlmSession::create_outbound_session(&account_a, &identity_key_b, &one_time_key_b).unwrap();
+    let outbound_session = account_a
+        .create_outbound_session(&identity_key_b, &one_time_key_b)
+        .unwrap();
     let pickled_session = outbound_session.pickle(PicklingMode::Encrypted { key: &[3, 2, 1] });
 
     // wrong key
