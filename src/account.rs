@@ -25,7 +25,7 @@ use std::ffi::CStr;
 #[cfg(feature = "deserialization")]
 use serde::Deserialize;
 #[cfg(feature = "deserialization")]
-use std::collections::HashMap;
+use std::collections::{hash_map::Iter, hash_map::Keys, hash_map::Values, HashMap};
 
 /// An olm account manages all cryptographic keys used on a device.
 /// ```
@@ -61,6 +61,22 @@ impl IdentityKeys {
     pub fn get(&self, k: &str) -> Option<&str> {
         let ret = self.keys.get(k);
         ret.map(|x| &**x)
+    }
+
+    pub fn values(&self) -> Values<String, String> {
+        self.keys.values()
+    }
+
+    pub fn keys(&self) -> Keys<String, String> {
+        self.keys.keys()
+    }
+
+    pub fn iter(&self) -> Iter<String, String> {
+        self.keys.iter()
+    }
+
+    pub fn contains_key(&self, k: &str) -> bool {
+        self.keys.contains_key(k)
     }
 }
 
