@@ -38,17 +38,13 @@ fn one_time_keys_valid() {
 
     // empty read of one time keys
     let otks_empty = olm_account.one_time_keys();
-    let otks_empty_json = json::parse(&otks_empty).unwrap();
-    assert!(otks_empty_json["curve25519"].is_object());
-    assert!(otks_empty_json["curve25519"].is_empty());
+    assert!(otks_empty.curve25519().is_empty());
 
     olm_account.generate_one_time_keys(20);
     let otks_filled = olm_account.one_time_keys();
-    let otks_filled_json = json::parse(&otks_filled).unwrap();
-    assert_eq!(20, otks_filled_json["curve25519"].len());
-    for entry in otks_filled_json["curve25519"].entries() {
-        assert_eq!(6, entry.0.len());
-        let key = entry.1.as_str().unwrap();
+    assert_eq!(20, otks_filled.curve25519().len());
+    for (key, _) in otks_filled.curve25519().iter() {
+        assert_eq!(6, key.len());
         base64::decode(&key).unwrap();
     }
 
@@ -56,9 +52,7 @@ fn one_time_keys_valid() {
 
     // empty read of one time keys after marking as published
     let otks_empty = olm_account.one_time_keys();
-    let otks_empty_json = json::parse(&otks_empty).unwrap();
-    assert!(otks_empty_json["curve25519"].is_object());
-    assert!(otks_empty_json["curve25519"].is_empty());
+    assert!(otks_empty.curve25519().is_empty());
 }
 
 #[test]
@@ -69,29 +63,22 @@ fn remove_one_time_keys() {
     let account_b = OlmAccount::new();
     account_b.generate_one_time_keys(1);
 
-    let otks = json::parse(&account_b.one_time_keys()).unwrap();
+    let otks = account_b.one_time_keys();
     let identity_keys = account_b.identity_keys();
     let session = account_a
         .create_outbound_session(
             &identity_keys.curve25519(),
-            &otks["curve25519"]
-                .entries()
-                .nth(0)
-                .unwrap()
-                .1
-                .as_str()
-                .unwrap(),
+            otks.curve25519().values().nth(0).unwrap(),
         )
         .unwrap();
 
-    assert_eq!(1, otks["curve25519"].len());
+    assert_eq!(1, otks.curve25519().len());
 
     account_b.remove_one_time_keys(&session).unwrap();
 
     // empty read of one time keys after removing
-    let otks_empty = json::parse(&account_b.one_time_keys()).unwrap();
-    assert!(otks_empty["curve25519"].is_object());
-    assert!(otks_empty["curve25519"].is_empty());
+    let otks_empty = account_b.one_time_keys();
+    assert!(otks_empty.curve25519().is_empty());
 }
 
 #[test]
@@ -103,16 +90,13 @@ fn remove_one_time_keys_fails() {
     let account_b = OlmAccount::new();
     account_b.generate_one_time_keys(1);
 
-    let otks = json::parse(&account_b.one_time_keys()).unwrap();
+    let otks = account_b.one_time_keys();
     let identity_keys = account_b.identity_keys();
     let session = account_a
-        .create_outbound_session(
-            &identity_keys.curve25519(),
-            &otks["curve25519"]["AAAAAQ"].as_str().unwrap(),
-        )
+        .create_outbound_session(&identity_keys.curve25519(), &otks.curve25519()["AAAAAQ"])
         .unwrap();
 
-    assert_eq!(1, otks["curve25519"].len());
+    assert_eq!(1, otks.curve25519().len());
 
     account_a.remove_one_time_keys(&session).unwrap();
 }

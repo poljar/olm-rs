@@ -80,6 +80,20 @@ impl IdentityKeys {
     }
 }
 
+#[cfg(feature = "deserialization")]
+#[derive(Deserialize, Debug, PartialEq)]
+pub struct OneTimeKeys {
+    #[serde(flatten)]
+    keys: HashMap<String, HashMap<String, String>>,
+}
+
+#[cfg(feature = "deserialization")]
+impl OneTimeKeys {
+    pub fn curve25519(&self) -> &HashMap<String, String> {
+        &self.keys["curve25519"]
+    }
+}
+
 impl OlmAccount {
     /// Creates a new instance of OlmAccount. During the instantiation the Ed25519 fingerprint key pair
     /// and the Curve25519 identity key pair are generated. For more information see
@@ -355,16 +369,7 @@ impl OlmAccount {
         }
     }
 
-    /// Gets the OlmAccount's one time keys formatted as JSON.
-    ///
-    /// # C-API equivalent
-    /// `olm_account_one_time_keys`
-    ///
-    /// # Panics
-    /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied one time keys buffer
-    /// * on malformed UTF-8 coding of the keys provided by libolm
-    ///
-    pub fn one_time_keys(&self) -> String {
+    pub fn one_time_keys_helper(&self) -> String {
         // get buffer length of OTKs
         let otks_len = unsafe { olm_sys::olm_account_one_time_keys_length(self.olm_account_ptr) };
         let mut otks_buf: Vec<u8> = vec![0; otks_len];
@@ -386,6 +391,26 @@ impl OlmAccount {
         }
 
         otks_result
+    }
+
+    /// Gets the OlmAccount's one time keys formatted as JSON.
+    ///
+    /// # C-API equivalent
+    /// `olm_account_one_time_keys`
+    ///
+    /// # Panics
+    /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied one time keys buffer
+    /// * on malformed UTF-8 coding of the keys provided by libolm
+    ///
+    #[cfg(not(feature = "deserialization"))]
+    pub fn one_time_keys(&self) -> String {
+        self.one_time_keys_helper()
+    }
+
+    #[cfg(feature = "deserialization")]
+    pub fn one_time_keys(&self) -> OneTimeKeys {
+        serde_json::from_str(&self.one_time_keys_helper())
+            .expect("Can't deserialize one-time keys.")
     }
 
     /// Mark the current set of one time keys as published.
