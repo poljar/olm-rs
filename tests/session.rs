@@ -13,10 +13,11 @@ fn create_session_pair() -> (OlmSession, OlmSession) {
     let _one_time_key_a = String::from("WzsbsjD85iB1R32iWxfJdwkgmdz29ClMbJSJziECYwk");
     let identity_key_b = String::from("q/YhJtog/5VHCAS9rM9uUf6AaFk1yPe4GYuyUOXyQCg");
     let one_time_key_b = String::from("oWvzryma+B2onYjo3hM6A3Mgo/Yepm8HvgSvwZMTnjQ");
-    let outbound =
-        OlmSession::create_outbound_session(&account_a, &identity_key_b, &one_time_key_b).unwrap();
+    let outbound = account_a
+        .create_outbound_session(&identity_key_b, &one_time_key_b)
+        .unwrap();
     let pre_key = outbound.encrypt(""); // Payload does not matter for PreKey
-    let inbound = OlmSession::create_inbound_session(&account_b, pre_key).unwrap();
+    let inbound = account_b.create_inbound_session(pre_key).unwrap();
     (inbound, outbound)
 }
 
