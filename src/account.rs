@@ -263,7 +263,16 @@ impl OlmAccount {
         }
     }
 
-    pub(crate) fn identity_keys_helper(&self) -> String {
+    /// Returns the account's public identity keys already formatted as JSON and BASE64.
+    ///
+    /// # C-API equivalent
+    /// `olm_account_identity_keys`
+    ///
+    /// # Panics
+    /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied identity keys buffer
+    /// * on malformed UTF-8 coding of the identity keys provided by libolm
+    ///
+    pub fn identity_keys(&self) -> String {
         // get buffer length of identity keys
         let keys_len = unsafe { olm_sys::olm_account_identity_keys_length(self.olm_account_ptr) };
         let mut identity_keys_buf: Vec<u8> = vec![0; keys_len];
@@ -288,24 +297,10 @@ impl OlmAccount {
         identity_keys_result
     }
 
-    /// Returns the account's public identity keys already formatted as JSON and BASE64.
-    ///
-    /// # C-API equivalent
-    /// `olm_account_identity_keys`
-    ///
-    /// # Panics
-    /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied identity keys buffer
-    /// * on malformed UTF-8 coding of the identity keys provided by libolm
-    ///
-    #[cfg(not(feature = "deserialization"))]
-    pub fn identity_keys(&self) -> String {
-        self.identity_keys_helper()
-    }
-
-    #[cfg(feature = "deserialization")]
     /// Returns the account's public identity keys.
-    pub fn identity_keys(&self) -> IdentityKeys {
-        serde_json::from_str(&self.identity_keys_helper()).expect("Can't deserialize identity keys")
+    #[cfg(feature = "deserialization")]
+    pub fn parsed_identity_keys(&self) -> IdentityKeys {
+        serde_json::from_str(&self.identity_keys()).expect("Can't deserialize identity keys")
     }
 
     /// Returns the last error that occurred for an OlmAccount.
@@ -409,7 +404,16 @@ impl OlmAccount {
         }
     }
 
-    pub fn one_time_keys_helper(&self) -> String {
+    /// Gets the OlmAccount's one time keys formatted as JSON.
+    ///
+    /// # C-API equivalent
+    /// `olm_account_one_time_keys`
+    ///
+    /// # Panics
+    /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied one time keys buffer
+    /// * on malformed UTF-8 coding of the keys provided by libolm
+    ///
+    pub fn one_time_keys(&self) -> String {
         // get buffer length of OTKs
         let otks_len = unsafe { olm_sys::olm_account_one_time_keys_length(self.olm_account_ptr) };
         let mut otks_buf: Vec<u8> = vec![0; otks_len];
@@ -433,25 +437,10 @@ impl OlmAccount {
         otks_result
     }
 
-    /// Gets the OlmAccount's one time keys formatted as JSON.
-    ///
-    /// # C-API equivalent
-    /// `olm_account_one_time_keys`
-    ///
-    /// # Panics
-    /// * `OUTPUT_BUFFER_TOO_SMALL` for supplied one time keys buffer
-    /// * on malformed UTF-8 coding of the keys provided by libolm
-    ///
-    #[cfg(not(feature = "deserialization"))]
-    pub fn one_time_keys(&self) -> String {
-        self.one_time_keys_helper()
-    }
-
     #[cfg(feature = "deserialization")]
     /// Returns the account's one-time keys.
-    pub fn one_time_keys(&self) -> OneTimeKeys {
-        serde_json::from_str(&self.one_time_keys_helper())
-            .expect("Can't deserialize one-time keys.")
+    pub fn parsed_one_time_keys(&self) -> OneTimeKeys {
+        serde_json::from_str(&self.one_time_keys()).expect("Can't deserialize one-time keys.")
     }
 
     /// Mark the current set of one time keys as published.
@@ -552,8 +541,8 @@ impl Drop for OlmAccount {
 #[test]
 fn parsed_keys() {
     let account = OlmAccount::new();
-    let identity_keys = json::parse(&account.identity_keys_helper()).unwrap();
-    let identity_keys_parsed = account.identity_keys();
+    let identity_keys = json::parse(&account.identity_keys()).unwrap();
+    let identity_keys_parsed = account.parsed_identity_keys();
     assert_eq!(
         identity_keys_parsed.curve25519(),
         identity_keys["curve25519"]
