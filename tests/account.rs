@@ -22,14 +22,14 @@ fn signatures_valid() {
     // test signature being valid base64
     let olm_account = OlmAccount::new();
     let message = "Hello world!";
-    let mut signature = olm_account.sign(message);
+    let signature = olm_account.sign(message);
     base64::decode(&signature).unwrap();
 
     let utility = OlmUtility::new();
     let ed25519_key_json = json::parse(&olm_account.identity_keys()).unwrap();
     let ed25519_key = ed25519_key_json["ed25519"].as_str().unwrap();
     assert!(utility
-        .ed25519_verify(&ed25519_key, message, &mut signature)
+        .ed25519_verify(&ed25519_key, message, &signature)
         .unwrap());
 }
 

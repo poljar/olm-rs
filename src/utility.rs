@@ -102,6 +102,11 @@ impl OlmUtility {
 
     /// Verify a ed25519 signature.
     ///
+    /// # Arugments
+    /// * `key` - The public part of the ed25519 key that signed the message.
+    /// * `message` - The message that was signed.
+    /// * `signature` - The signature of the message.
+    ///
     /// # C-API equivalent
     /// `olm_ed25519_verify`
     ///
@@ -109,20 +114,17 @@ impl OlmUtility {
         &self,
         key: &str,
         message: &str,
-        signature: &mut str,
+        signature: &str,
     ) -> Result<bool, OlmUtilityError> {
-        let signature_bytes = unsafe { signature.as_bytes_mut() };
-        let message_bytes = message.as_bytes();
-
         let ed25519_verify_error = unsafe {
             olm_sys::olm_ed25519_verify(
                 self.olm_utility_ptr,
                 key.as_ptr() as *const _,
                 key.len(),
-                message_bytes.as_ptr() as *const _,
-                message_bytes.len(),
-                signature_bytes.as_mut_ptr() as *mut _,
-                signature_bytes.len(),
+                message.as_ptr() as *const _,
+                message.len(),
+                signature.as_ptr() as *mut _,
+                signature.len(),
             )
         };
 
