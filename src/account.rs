@@ -22,12 +22,17 @@ use crate::PicklingMode;
 use olm_sys;
 use std::ffi::CStr;
 
+#[cfg(feature = "deserialization")]
+use serde::Deserialize;
+#[cfg(feature = "deserialization")]
+use std::collections::{hash_map::Iter, hash_map::Keys, hash_map::Values, HashMap};
+
 /// An olm account manages all cryptographic keys used on a device.
 /// ```
 /// use olm_rs::account::OlmAccount;
 ///
 /// let olm_account = OlmAccount::new();
-/// println!("{}", olm_account.identity_keys());
+/// println!("{:?}", olm_account.identity_keys());
 /// ```
 pub struct OlmAccount {
     /// Pointer by which libolm acquires the data saved in an instance of OlmAccount
@@ -36,10 +41,96 @@ pub struct OlmAccount {
     olm_account_buf: Vec<u8>,
 }
 
+#[cfg(feature = "deserialization")]
 /// Struct representing the parsed result of `OlmAccount::identity_keys()`.
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct IdentityKeys {
-    pub curve25519: String,
-    pub ed25519: String,
+    #[serde(flatten)]
+    keys: HashMap<String, String>,
+}
+
+#[cfg(feature = "deserialization")]
+impl IdentityKeys {
+    /// Get the public part of the ed25519 key of the account.
+    pub fn ed25519(&self) -> &str {
+        &self.keys["ed25519"]
+    }
+
+    /// Get the public part of the curve25519 key of the account.
+    pub fn curve25519(&self) -> &str {
+        &self.keys["curve25519"]
+    }
+
+    /// Get a reference to the key of the given key type.
+    pub fn get(&self, key_type: &str) -> Option<&str> {
+        let ret = self.keys.get(key_type);
+        ret.map(|x| &**x)
+    }
+
+    /// An iterator visiting all public keys of the account.
+    pub fn values(&self) -> Values<String, String> {
+        self.keys.values()
+    }
+
+    /// An iterator visiting all key types of the account.
+    pub fn keys(&self) -> Keys<String, String> {
+        self.keys.keys()
+    }
+
+    /// An iterator visiting all key-type, key pairs of the account.
+    pub fn iter(&self) -> Iter<String, String> {
+        self.keys.iter()
+    }
+
+    /// Returns true if the account contains a key with the given key type.
+    pub fn contains_key(&self, key_type: &str) -> bool {
+        self.keys.contains_key(key_type)
+    }
+}
+
+#[cfg(feature = "deserialization")]
+#[derive(Deserialize, Debug, PartialEq)]
+/// Struct representing the the one-time keys.
+/// The keys can be accessed in a map-like fashion.
+pub struct OneTimeKeys {
+    #[serde(flatten)]
+    keys: HashMap<String, HashMap<String, String>>,
+}
+
+#[cfg(feature = "deserialization")]
+impl OneTimeKeys {
+    /// Get the HashMap containing the curve25519 one-time keys.
+    /// This is the same as using `get("curve25519").unwrap()`
+    pub fn curve25519(&self) -> &HashMap<String, String> {
+        &self.keys["curve25519"]
+    }
+
+    /// Get a reference to the hashmap corresponding to given key type.
+    pub fn get(&self, key_type: &str) -> Option<&HashMap<String, String>> {
+        self.keys.get(key_type)
+    }
+
+    /// An iterator visiting all one-time key hashmaps in an arbitrary order.
+    pub fn values(&self) -> Values<String, HashMap<String, String>> {
+        self.keys.values()
+    }
+
+    /// An iterator visiting all one-time key types in an arbitrary order.
+    pub fn keys(&self) -> Keys<String, HashMap<String, String>> {
+        self.keys.keys()
+    }
+
+    /// An iterator visiting all one-time key types and their respective
+    /// key hashmaps in an arbitrary order.
+    pub fn iter(&self) -> Iter<String, HashMap<String, String>> {
+        self.keys.iter()
+    }
+
+    /// Returns `true` if the struct contains the given key type.
+    /// This does not mean that there are any keys for the given key type.
+    pub fn contains_key(&self, key_type: &str) -> bool {
+        self.keys.contains_key(key_type)
+    }
 }
 
 impl OlmAccount {
@@ -206,6 +297,12 @@ impl OlmAccount {
         identity_keys_result
     }
 
+    /// Returns the account's public identity keys.
+    #[cfg(feature = "deserialization")]
+    pub fn parsed_identity_keys(&self) -> IdentityKeys {
+        serde_json::from_str(&self.identity_keys()).expect("Can't deserialize identity keys")
+    }
+
     /// Returns the last error that occurred for an OlmAccount.
     /// Since error codes are encoded as CStrings by libolm,
     /// OlmAccountError::Unknown is returned on an unknown error code.
@@ -340,6 +437,12 @@ impl OlmAccount {
         otks_result
     }
 
+    #[cfg(feature = "deserialization")]
+    /// Returns the account's one-time keys.
+    pub fn parsed_one_time_keys(&self) -> OneTimeKeys {
+        serde_json::from_str(&self.one_time_keys()).expect("Can't deserialize one-time keys.")
+    }
+
     /// Mark the current set of one time keys as published.
     ///
     /// # C-API equivalent
@@ -368,21 +471,6 @@ impl OlmAccount {
             Err(Self::last_error(self.olm_account_ptr))
         } else {
             Ok(())
-        }
-    }
-
-    /// Convenience function that returns the parsed result of `OlmAccount::identity_keys()`.
-    /// As a result everything mentioned for that function applies here as well.
-    pub fn parsed_identity_keys(&self) -> IdentityKeys {
-        let identity_keys = self.identity_keys();
-        let identity_keys_split: Vec<&str> = identity_keys.split('"').collect();
-
-        // We parse as follows, illustrated with example output from identity_keys():
-        // {"curve25519":"R1sNKJt6FjeCaKy8HuUTRe/YvoDgcYXxcG1mMHZNrnA","ed25519":"O8/IG5pcHBlffgmRTAOBeOduz7apOifh0uwbhaztDls"}
-        // 0|----1-----|2|------------------3------------------------|4|---5---|6|-------------------7-----------------------|8
-        IdentityKeys {
-            curve25519: identity_keys_split[3].into(),
-            ed25519: identity_keys_split[7].into(),
         }
     }
 
@@ -447,4 +535,17 @@ impl Drop for OlmAccount {
             olm_sys::olm_clear_account(self.olm_account_ptr);
         }
     }
+}
+
+#[cfg(feature = "deserialization")]
+#[test]
+fn parsed_keys() {
+    let account = OlmAccount::new();
+    let identity_keys = json::parse(&account.identity_keys()).unwrap();
+    let identity_keys_parsed = account.parsed_identity_keys();
+    assert_eq!(
+        identity_keys_parsed.curve25519(),
+        identity_keys["curve25519"]
+    );
+    assert_eq!(identity_keys_parsed.ed25519(), identity_keys["ed25519"]);
 }
