@@ -102,6 +102,11 @@ impl OlmUtility {
 
     /// Verify a ed25519 signature.
     ///
+    /// # Arugments
+    /// * `key` - The public part of the ed25519 key that signed the message.
+    /// * `message` - The message that was signed.
+    /// * `signature` - The signature of the message.
+    ///
     /// # C-API equivalent
     /// `olm_ed25519_verify`
     ///
