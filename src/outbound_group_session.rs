@@ -21,6 +21,8 @@ use crate::PicklingMode;
 use olm_sys;
 use std::ffi::CStr;
 
+use zeroize::Zeroizing;
+
 /// An out-bound group session is responsible for encrypting outgoing
 /// communication in a Megolm session.
 pub struct OlmOutboundGroupSession {
@@ -51,15 +53,18 @@ impl OlmOutboundGroupSession {
         let random_len = unsafe {
             olm_sys::olm_init_outbound_group_session_random_length(olm_outbound_group_session_ptr)
         };
-        let mut random_buf: Vec<u8> = vec![0; random_len];
-        getrandom(&mut random_buf);
 
-        let create_error = unsafe {
-            olm_sys::olm_init_outbound_group_session(
-                olm_outbound_group_session_ptr,
-                random_buf.as_mut_ptr() as *mut _,
-                random_len,
-            )
+        let create_error = {
+            let mut random_buf: Zeroizing<Vec<u8>> = Zeroizing::new(vec![0; random_len]);
+            getrandom(&mut random_buf);
+
+            unsafe {
+                olm_sys::olm_init_outbound_group_session(
+                    olm_outbound_group_session_ptr,
+                    random_buf.as_mut_ptr() as *mut _,
+                    random_len,
+                )
+            }
         };
 
         if create_error == errors::olm_error() {
@@ -86,16 +91,18 @@ impl OlmOutboundGroupSession {
             unsafe { olm_sys::olm_pickle_outbound_group_session_length(self.group_session_ptr) };
         let mut pickled_buf = vec![0; pickled_len];
 
-        let key = crate::convert_pickling_mode_to_key(mode);
+        let pickle_error = {
+            let key = Zeroizing::new(crate::convert_pickling_mode_to_key(mode));
 
-        let pickle_error = unsafe {
-            olm_sys::olm_pickle_outbound_group_session(
-                self.group_session_ptr,
-                key.as_ptr() as *const _,
-                key.len(),
-                pickled_buf.as_mut_ptr() as *mut _,
-                pickled_len,
-            )
+            unsafe {
+                olm_sys::olm_pickle_outbound_group_session(
+                    self.group_session_ptr,
+                    key.as_ptr() as *const _,
+                    key.len(),
+                    pickled_buf.as_mut_ptr() as *mut _,
+                    pickled_len,
+                )
+            }
         };
 
         let pickled_result = String::from_utf8(pickled_buf).unwrap();
@@ -129,16 +136,18 @@ impl OlmOutboundGroupSession {
             )
         };
 
-        let key = crate::convert_pickling_mode_to_key(mode);
+        let unpickle_error = {
+            let key = Zeroizing::new(crate::convert_pickling_mode_to_key(mode));
 
-        let unpickle_error = unsafe {
-            olm_sys::olm_unpickle_outbound_group_session(
-                olm_outbound_group_session_ptr,
-                key.as_ptr() as *const _,
-                key.len(),
-                pickled_buf.as_mut_ptr() as *mut _,
-                pickled_len,
-            )
+            unsafe {
+                olm_sys::olm_unpickle_outbound_group_session(
+                    olm_outbound_group_session_ptr,
+                    key.as_ptr() as *const _,
+                    key.len(),
+                    pickled_buf.as_mut_ptr() as *mut _,
+                    pickled_len,
+                )
+            }
         };
 
         if unpickle_error == errors::olm_error() {

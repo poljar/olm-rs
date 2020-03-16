@@ -20,6 +20,8 @@ use crate::PicklingMode;
 use olm_sys;
 use std::ffi::CStr;
 
+use zeroize::Zeroizing;
+
 /// An in-bound group session is responsible for decrypting incoming
 /// communication in a Megolm session.
 pub struct OlmInboundGroupSession {
@@ -119,16 +121,18 @@ impl OlmInboundGroupSession {
                 unsafe { olm_sys::olm_pickle_inbound_group_session_length(self.group_session_ptr) }
             ];
 
-        let key = crate::convert_pickling_mode_to_key(mode);
+        let pickle_error = {
+            let key = Zeroizing::new(crate::convert_pickling_mode_to_key(mode));
 
-        let pickle_error = unsafe {
-            olm_sys::olm_pickle_inbound_group_session(
-                self.group_session_ptr,
-                key.as_ptr() as *const _,
-                key.len(),
-                pickled_buf.as_mut_ptr() as *mut _,
-                pickled_buf.len(),
-            )
+            unsafe {
+                olm_sys::olm_pickle_inbound_group_session(
+                    self.group_session_ptr,
+                    key.as_ptr() as *const _,
+                    key.len(),
+                    pickled_buf.as_mut_ptr() as *mut _,
+                    pickled_buf.len(),
+                )
+            }
         };
 
         let pickled_result = String::from_utf8(pickled_buf).unwrap();
@@ -160,16 +164,18 @@ impl OlmInboundGroupSession {
             olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf.as_mut_ptr() as *mut _)
         };
 
-        let key = crate::convert_pickling_mode_to_key(mode);
+        let unpickle_error = {
+            let key = Zeroizing::new(crate::convert_pickling_mode_to_key(mode));
 
-        let unpickle_error = unsafe {
-            olm_sys::olm_unpickle_inbound_group_session(
-                olm_inbound_group_session_ptr,
-                key.as_ptr() as *const _,
-                key.len(),
-                pickled_buf.as_mut_ptr() as *mut _,
-                pickled_len,
-            )
+            unsafe {
+                olm_sys::olm_unpickle_inbound_group_session(
+                    olm_inbound_group_session_ptr,
+                    key.as_ptr() as *const _,
+                    key.len(),
+                    pickled_buf.as_mut_ptr() as *mut _,
+                    pickled_len,
+                )
+            }
         };
 
         if unpickle_error == errors::olm_error() {
@@ -236,7 +242,7 @@ impl OlmInboundGroupSession {
         let message_len = message_buf.len();
         let message_ptr = message_buf.as_mut_ptr() as *mut _;
 
-        let mut plaintext_buf: Vec<u8> = vec![
+        let mut plaintext_buf = Zeroizing::new(vec![
             0;
             unsafe {
                 olm_sys::olm_group_decrypt_max_plaintext_length(
@@ -245,7 +251,7 @@ impl OlmInboundGroupSession {
                     message_len,
                 )
             }
-        ];
+        ]);
         let message_buf = unsafe { message.as_bytes_mut() };
         let message_len = message_buf.len();
         let message_ptr = message_buf.as_mut_ptr() as *mut _;

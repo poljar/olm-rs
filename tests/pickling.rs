@@ -10,11 +10,17 @@ fn account_pickling_fails_on_wrong_key() {
     let pickled;
     {
         let olm_account = OlmAccount::new();
-        pickled = olm_account.pickle(PicklingMode::Encrypted { key: &[3, 2, 1] });
+        pickled = olm_account.pickle(PicklingMode::Encrypted {
+            key: [3, 2, 1].to_vec(),
+        });
     }
     // wrong key
-    let olm_account_bad =
-        OlmAccount::unpickle(pickled, PicklingMode::Encrypted { key: &[1, 2, 3] });
+    let olm_account_bad = OlmAccount::unpickle(
+        pickled,
+        PicklingMode::Encrypted {
+            key: [1, 2, 3].to_vec(),
+        },
+    );
 
     assert!(olm_account_bad.is_err());
     assert_eq!(olm_account_bad.err(), Some(OlmAccountError::BadAccountKey));
@@ -48,11 +54,17 @@ fn session_pickling_fails_on_wrong_key() {
     let outbound_session = account_a
         .create_outbound_session(&identity_key_b, &one_time_key_b)
         .unwrap();
-    let pickled_session = outbound_session.pickle(PicklingMode::Encrypted { key: &[3, 2, 1] });
+    let pickled_session = outbound_session.pickle(PicklingMode::Encrypted {
+        key: [3, 2, 1].to_vec(),
+    });
 
     // wrong key
-    let outbound_session_bad =
-        OlmSession::unpickle(pickled_session, PicklingMode::Encrypted { key: &[1, 2, 3] });
+    let outbound_session_bad = OlmSession::unpickle(
+        pickled_session,
+        PicklingMode::Encrypted {
+            key: [1, 2, 3].to_vec(),
+        },
+    );
     assert!(outbound_session_bad.is_err());
     assert_eq!(
         outbound_session_bad.err(),
