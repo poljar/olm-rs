@@ -66,18 +66,19 @@ pub struct OlmVersion {
 }
 
 /// Used for setting the encryption parameter for pickling (serialisation) functions.
-/// `Unencrypted` is functionally equivalent to `Encrypted{key: &[]}`, but is much more clear.
+/// `Unencrypted` is functionally equivalent to `Encrypted{key: [].to_vec() }`, but is much more clear.
 /// Pickling modes have to be equivalent for pickling and unpickling operations to succeed.
-pub enum PicklingMode<'a> {
+/// `Encrypted` takes ownership of `key`, in order to properly destroy it after use.
+pub enum PicklingMode {
     Unencrypted,
-    Encrypted { key: &'a [u8] },
+    Encrypted { key: Vec<u8> },
 }
 
-/// Convenience function that maps `Unencrypted` to an empty slice, or
+/// Convenience function that maps `Unencrypted` to an empty key, or
 /// unwraps `Encrypted`. Mostly for reducing code duplication.
-pub(crate) fn convert_pickling_mode_to_key(mode: PicklingMode) -> &[u8] {
+pub(crate) fn convert_pickling_mode_to_key(mode: PicklingMode) -> Vec<u8> {
     match mode {
-        PicklingMode::Unencrypted => &[],
+        PicklingMode::Unencrypted => Vec::new(),
         PicklingMode::Encrypted { key: x } => x,
     }
 }

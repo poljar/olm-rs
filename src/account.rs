@@ -20,12 +20,13 @@ use crate::getrandom;
 use crate::session::OlmSession;
 use crate::PicklingMode;
 use olm_sys;
+#[cfg(feature = "deserialization")]
+use std::collections::{hash_map::Iter, hash_map::Keys, hash_map::Values, HashMap};
 use std::ffi::CStr;
 
 #[cfg(feature = "deserialization")]
 use serde::Deserialize;
-#[cfg(feature = "deserialization")]
-use std::collections::{hash_map::Iter, hash_map::Keys, hash_map::Values, HashMap};
+use zeroize::Zeroizing;
 
 /// An olm account manages all cryptographic keys used on a device.
 /// ```
@@ -152,18 +153,20 @@ impl OlmAccount {
         let olm_account_ptr =
             unsafe { olm_sys::olm_account(olm_account_buf.as_mut_ptr() as *mut _) };
 
-        // determine optimal length of the random buffer
-        let random_len = unsafe { olm_sys::olm_create_account_random_length(olm_account_ptr) };
-        let mut random_buf: Vec<u8> = vec![0; random_len];
-        getrandom(&mut random_buf);
+        let create_error = {
+            // determine optimal length of the random buffer
+            let random_len = unsafe { olm_sys::olm_create_account_random_length(olm_account_ptr) };
+            let mut random_buf: Zeroizing<Vec<u8>> = Zeroizing::new(vec![0; random_len]);
+            getrandom(&mut random_buf);
 
-        // create OlmAccount with supplied random data
-        let create_error = unsafe {
-            olm_sys::olm_create_account(
-                olm_account_ptr,
-                random_buf.as_mut_ptr() as *mut _,
-                random_len,
-            )
+            // create OlmAccount with supplied random data
+            unsafe {
+                olm_sys::olm_create_account(
+                    olm_account_ptr,
+                    random_buf.as_mut_ptr() as *mut _,
+                    random_len,
+                )
+            }
         };
 
         if create_error == errors::olm_error() {
@@ -203,16 +206,18 @@ impl OlmAccount {
         let mut pickled_buf: Vec<u8> =
             vec![0; unsafe { olm_sys::olm_pickle_account_length(self.olm_account_ptr) }];
 
-        let key = crate::convert_pickling_mode_to_key(mode);
+        let pickle_error = {
+            let key = Zeroizing::new(crate::convert_pickling_mode_to_key(mode));
 
-        let pickle_error = unsafe {
-            olm_sys::olm_pickle_account(
-                self.olm_account_ptr,
-                key.as_ptr() as *const _,
-                key.len(),
-                pickled_buf.as_mut_ptr() as *mut _,
-                pickled_buf.len(),
-            )
+            unsafe {
+                olm_sys::olm_pickle_account(
+                    self.olm_account_ptr,
+                    key.as_ptr() as *const _,
+                    key.len(),
+                    pickled_buf.as_mut_ptr() as *mut _,
+                    pickled_buf.len(),
+                )
+            }
         };
 
         let pickled_result = String::from_utf8(pickled_buf).unwrap();
@@ -241,16 +246,18 @@ impl OlmAccount {
         let olm_account_ptr =
             unsafe { olm_sys::olm_account(olm_account_buf.as_mut_ptr() as *mut _) };
 
-        let key = crate::convert_pickling_mode_to_key(mode);
+        let unpickle_error = {
+            let key = Zeroizing::new(crate::convert_pickling_mode_to_key(mode));
 
-        let unpickle_error = unsafe {
-            olm_sys::olm_unpickle_account(
-                olm_account_ptr,
-                key.as_ptr() as *const _,
-                key.len(),
-                pickled_buf.as_mut_ptr() as *mut _,
-                pickled_len,
-            )
+            unsafe {
+                olm_sys::olm_unpickle_account(
+                    olm_account_ptr,
+                    key.as_ptr() as *const _,
+                    key.len(),
+                    pickled_buf.as_mut_ptr() as *mut _,
+                    pickled_len,
+                )
+            }
         };
 
         if unpickle_error == errors::olm_error() {
@@ -385,18 +392,20 @@ impl OlmAccount {
             )
         };
 
-        // Construct and populate random buffer
-        let mut random_buf: Vec<u8> = vec![0; random_len];
-        getrandom(&mut random_buf);
+        let generate_error = {
+            // Construct and populate random buffer
+            let mut random_buf: Zeroizing<Vec<u8>> = Zeroizing::new(vec![0; random_len]);
+            getrandom(&mut random_buf);
 
-        // Call function for generating one time keys
-        let generate_error = unsafe {
-            olm_sys::olm_account_generate_one_time_keys(
-                self.olm_account_ptr,
-                number_of_keys,
-                random_buf.as_mut_ptr() as *mut _,
-                random_len,
-            )
+            // Call function for generating one time keys
+            unsafe {
+                olm_sys::olm_account_generate_one_time_keys(
+                    self.olm_account_ptr,
+                    number_of_keys,
+                    random_buf.as_mut_ptr() as *mut _,
+                    random_len,
+                )
+            }
         };
 
         if generate_error == errors::olm_error() {

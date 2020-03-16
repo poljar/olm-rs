@@ -20,9 +20,11 @@ use crate::errors;
 use crate::errors::OlmSessionError;
 use crate::getrandom;
 use crate::PicklingMode;
-use olm_sys;
 use std::cmp::Ordering;
 use std::ffi::CStr;
+
+use olm_sys;
+use zeroize::Zeroizing;
 
 /// Either an outbound or inbound session for secure communication.
 #[derive(Eq)]
@@ -113,7 +115,7 @@ impl OlmSession {
             let their_one_time_key_buf = their_one_time_key.as_bytes();
             let random_len =
                 unsafe { olm_sys::olm_create_outbound_session_random_length(olm_session_ptr) };
-            let mut random_buf: Vec<u8> = vec![0; random_len];
+            let mut random_buf: Zeroizing<Vec<u8>> = Zeroizing::new(vec![0; random_len]);
             getrandom(&mut random_buf);
 
             unsafe {
@@ -217,16 +219,18 @@ impl OlmSession {
         let pickled_len = unsafe { olm_sys::olm_pickle_session_length(self.olm_session_ptr) };
         let mut pickled_buf = vec![0; pickled_len];
 
-        let key = crate::convert_pickling_mode_to_key(mode);
+        let pickle_error = {
+            let key = Zeroizing::new(crate::convert_pickling_mode_to_key(mode));
 
-        let pickle_error = unsafe {
-            olm_sys::olm_pickle_session(
-                self.olm_session_ptr,
-                key.as_ptr() as *const _,
-                key.len(),
-                pickled_buf.as_mut_ptr() as *mut _,
-                pickled_len,
-            )
+            unsafe {
+                olm_sys::olm_pickle_session(
+                    self.olm_session_ptr,
+                    key.as_ptr() as *const _,
+                    key.len(),
+                    pickled_buf.as_mut_ptr() as *mut _,
+                    pickled_len,
+                )
+            }
         };
 
         let pickled_result = String::from_utf8(pickled_buf).unwrap();
@@ -248,7 +252,7 @@ impl OlmSession {
     /// * `InvalidBase64` if decoding the supplied `pickled` string slice fails
     ///
     pub fn unpickle(mut pickled: String, mode: PicklingMode) -> Result<Self, OlmSessionError> {
-        let key = crate::convert_pickling_mode_to_key(mode);
+        let key = Zeroizing::new(crate::convert_pickling_mode_to_key(mode));
 
         Self::create_session_with(|olm_session_ptr| {
             let pickled_len = pickled.len();
@@ -283,20 +287,22 @@ impl OlmSession {
             unsafe { olm_sys::olm_encrypt_message_length(self.olm_session_ptr, plaintext_len) };
         let mut message_buf: Vec<u8> = vec![0; message_len];
 
-        let random_len = unsafe { olm_sys::olm_encrypt_random_length(self.olm_session_ptr) };
-        let mut random_buf: Vec<u8> = vec![0; random_len];
-        getrandom(&mut random_buf);
+        let encrypt_error = {
+            let random_len = unsafe { olm_sys::olm_encrypt_random_length(self.olm_session_ptr) };
+            let mut random_buf: Zeroizing<Vec<u8>> = Zeroizing::new(vec![0; random_len]);
+            getrandom(&mut random_buf);
 
-        let encrypt_error = unsafe {
-            olm_sys::olm_encrypt(
-                self.olm_session_ptr,
-                plaintext_buf.as_ptr() as *const _,
-                plaintext_len,
-                random_buf.as_mut_ptr() as *mut _,
-                random_len,
-                message_buf.as_mut_ptr() as *mut _,
-                message_len,
-            )
+            unsafe {
+                olm_sys::olm_encrypt(
+                    self.olm_session_ptr,
+                    plaintext_buf.as_ptr() as *const _,
+                    plaintext_len,
+                    random_buf.as_mut_ptr() as *mut _,
+                    random_len,
+                    message_buf.as_mut_ptr() as *mut _,
+                    message_len,
+                )
+            }
         };
 
         let message_result = String::from_utf8(message_buf).unwrap();
@@ -354,7 +360,7 @@ impl OlmSession {
             return Err(Self::last_error(self.olm_session_ptr));
         }
 
-        let mut plaintext_buf: Vec<u8> = vec![0; plaintext_max_len];
+        let mut plaintext_buf = Zeroizing::new(vec![0; plaintext_max_len]);
 
         let message_buf = unsafe { message.as_bytes_mut() };
         let message_len = message_buf.len();
