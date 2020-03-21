@@ -20,6 +20,8 @@
 
 use olm_sys;
 use std::fmt::Debug;
+use std::fmt;
+use std::error::Error;
 
 /// Since libolm does not do heap allocation and instead relies on the user to
 /// provide already allocated buffers, a lot of potential errors regarding
@@ -50,6 +52,22 @@ pub enum OlmAccountError {
     OutputBufferTooSmall,
     Unknown,
 }
+
+impl fmt::Display for OlmAccountError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let message = match self {
+            OlmAccountError::BadAccountKey => "The supplied account key is invalid.",
+            OlmAccountError::BadMessageKeyId => "The message references an unknown key id.",
+            OlmAccountError::InvalidBase64 => "The input base64 was invalid.",
+            OlmAccountError::NotEnoughRandom => "Not enough entropy was supplied.",
+            OlmAccountError::OutputBufferTooSmall => "Supplied output buffer is too small.",
+            OlmAccountError::Unknown => "A unknown error occured.",
+        };
+        write!(f, "{}", message)
+    }
+}
+
+impl Error for OlmAccountError {}
 
 /// All errors that could be caused by an operation regarding `OlmUitlity`.
 /// Errors are named exactly like the ones in libolm.
