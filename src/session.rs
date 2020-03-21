@@ -34,6 +34,48 @@ pub struct OlmSession {
     olm_session_buf: Vec<u8>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Message(String);
+
+#[derive(Debug, Clone)]
+pub struct PreKeyMessage(String);
+
+impl PreKeyMessage {
+    pub fn new(message: String) -> Self {
+        PreKeyMessage(message)
+    }
+}
+
+impl Message {
+    pub fn new(ciphertext: String) -> Self {
+        Message(ciphertext)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum OlmMessage {
+    Message(Message),
+    PreKey(PreKeyMessage),
+}
+
+impl OlmMessage {
+    pub fn from_type_and_ciphertext(message_type: usize, ciphertext: String) -> Result<Self, ()> {
+        match message_type {
+            olm_sys::OLM_MESSAGE_TYPE_PRE_KEY => Ok(OlmMessage::PreKey(PreKeyMessage::new(ciphertext))),
+            olm_sys::OLM_MESSAGE_TYPE_MESSAGE => Ok(OlmMessage::Message(Message::new(ciphertext))),
+            _ => Err(()),
+        }
+    }
+
+    #[allow(clippy::wrong_self_convention)]
+    pub fn to_tuple(self) -> (OlmMessageType, String) {
+        match self {
+            OlmMessage::Message(m) => (OlmMessageType::Message, m.0),
+            OlmMessage::PreKey(m) => (OlmMessageType::PreKey, m.0),
+        }
+    }
+}
+
 impl OlmSession {
     /// Creates an inbound session for sending/receiving messages from a received 'prekey' message.
     ///
@@ -48,10 +90,10 @@ impl OlmSession {
     ///
     pub(crate) fn create_inbound_session(
         account: &OlmAccount,
-        mut one_time_key_message: String,
+        mut message: PreKeyMessage,
     ) -> Result<Self, OlmSessionError> {
         Self::create_session_with(|olm_session_ptr| unsafe {
-            let one_time_key_message_buf = one_time_key_message.as_bytes_mut();
+            let one_time_key_message_buf = message.0.as_bytes_mut();
             olm_sys::olm_create_inbound_session(
                 olm_session_ptr,
                 account.olm_account_ptr,
@@ -75,12 +117,12 @@ impl OlmSession {
     pub(crate) fn create_inbound_session_from(
         account: &OlmAccount,
         their_identity_key: &str,
-        mut one_time_key_message: String,
+        mut one_time_key_message: PreKeyMessage,
     ) -> Result<Self, OlmSessionError> {
         Self::create_session_with(|olm_session_ptr| {
             let their_identity_key_buf = their_identity_key.as_bytes();
             unsafe {
-                let one_time_key_message_buf = one_time_key_message.as_bytes_mut();
+                let one_time_key_message_buf = one_time_key_message.0.as_bytes_mut();
                 olm_sys::olm_create_inbound_session_from(
                     olm_session_ptr,
                     account.olm_account_ptr,
@@ -280,12 +322,14 @@ impl OlmSession {
     /// * `OutputBufferTooSmall` for encrypted message
     /// * on malformed UTF-8 coding of the ciphertext provided by libolm
     ///
-    pub fn encrypt(&self, plaintext: &str) -> String {
+    pub fn encrypt(&self, plaintext: &str) -> OlmMessage {
         let plaintext_buf = plaintext.as_bytes();
         let plaintext_len = plaintext_buf.len();
         let message_len =
             unsafe { olm_sys::olm_encrypt_message_length(self.olm_session_ptr, plaintext_len) };
         let mut message_buf: Vec<u8> = vec![0; message_len];
+
+        let message_type = self.encrypt_message_type();
 
         let encrypt_error = {
             let random_len = unsafe { olm_sys::olm_encrypt_random_length(self.olm_session_ptr) };
@@ -311,7 +355,10 @@ impl OlmSession {
             errors::handle_fatal_error(Self::last_error(self.olm_session_ptr));
         }
 
-        message_result
+        match message_type {
+            OlmMessageType::Message => OlmMessage::Message(Message::new(message_result)),
+            OlmMessageType::PreKey => OlmMessage::PreKey(PreKeyMessage::new(message_result)),
+        }
     }
 
     /// Decrypts a message using this session. Decoding is lossy, meaing if
@@ -332,10 +379,10 @@ impl OlmSession {
     ///
     pub fn decrypt(
         &self,
-        message_type: OlmMessageType,
-        mut message: String,
+        message: OlmMessage,
     ) -> Result<String, OlmSessionError> {
         // get the usize value associated with the supplied message type
+        let (message_type, mut ciphertext) = message.to_tuple();
         let message_type_val = match message_type {
             OlmMessageType::PreKey => olm_sys::OLM_MESSAGE_TYPE_PRE_KEY,
             _ => olm_sys::OLM_MESSAGE_TYPE_MESSAGE,
@@ -343,7 +390,7 @@ impl OlmSession {
 
         // We need to clone the message because
         // olm_decrypt_max_plaintext_length destroys the input buffer
-        let mut message_for_len = message.clone();
+        let mut message_for_len = ciphertext.to_owned();
         let message_buf = unsafe { message_for_len.as_bytes_mut() };
         let message_len = message_buf.len();
         let message_ptr = message_buf.as_mut_ptr() as *mut _;
@@ -362,7 +409,7 @@ impl OlmSession {
 
         let mut plaintext_buf = Zeroizing::new(vec![0; plaintext_max_len]);
 
-        let message_buf = unsafe { message.as_bytes_mut() };
+        let message_buf = unsafe { ciphertext.as_bytes_mut() };
         let message_len = message_buf.len();
         let message_ptr = message_buf.as_mut_ptr() as *mut _;
 
@@ -399,7 +446,7 @@ impl OlmSession {
     /// Can apperently encounter a fatal error, but the documentation does not specifiy
     /// what kind of error.
     ///
-    pub fn encrypt_message_type(&self) -> OlmMessageType {
+    pub(crate) fn encrypt_message_type(&self) -> OlmMessageType {
         let message_type_result =
             unsafe { olm_sys::olm_encrypt_message_type(self.olm_session_ptr) };
 
@@ -448,10 +495,11 @@ impl OlmSession {
     ///
     pub fn matches_inbound_session(
         &self,
-        mut one_time_key_message: String,
+        mut message: PreKeyMessage,
     ) -> Result<bool, OlmSessionError> {
-        let one_time_key_message_buf = unsafe { one_time_key_message.as_bytes_mut() };
         let matches_result = unsafe {
+            let one_time_key_message_buf = message.0.as_bytes_mut();
+
             olm_sys::olm_matches_inbound_session(
                 self.olm_session_ptr,
                 one_time_key_message_buf.as_mut_ptr() as *mut _,
@@ -485,12 +533,13 @@ impl OlmSession {
     pub fn matches_inbound_session_from(
         &self,
         their_identity_key: &str,
-        mut one_time_key_message: String,
+        mut message : PreKeyMessage,
     ) -> Result<bool, OlmSessionError> {
         let their_identity_key_buf = their_identity_key.as_bytes();
         let their_identity_key_ptr = their_identity_key_buf.as_ptr() as *const _;
-        let one_time_key_message_buf = unsafe { one_time_key_message.as_bytes_mut() };
         let matches_result = unsafe {
+            let one_time_key_message_buf = message.0.as_bytes_mut();
+
             olm_sys::olm_matches_inbound_session_from(
                 self.olm_session_ptr,
                 their_identity_key_ptr,
@@ -545,5 +594,30 @@ impl Drop for OlmSession {
         unsafe {
             olm_sys::olm_clear_session(self.olm_session_ptr);
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::account::OlmAccount;
+    use crate::session::OlmMessageType;
+
+    #[test]
+    fn message_type() {
+        let alice = OlmAccount::new();
+        let bob = OlmAccount::new();
+
+        alice.generate_one_time_keys(1);
+
+        let identity_key = alice.parsed_identity_keys().ed25519().to_owned();
+        let one_time_key = alice.parsed_one_time_keys().curve25519().values().nth(0).unwrap().to_owned();
+
+        let outbound_session = bob.create_outbound_session(&identity_key, &one_time_key).unwrap();
+
+        assert_eq!(
+            OlmMessageType::PreKey,
+            outbound_session.encrypt_message_type()
+        );
+        assert!(!outbound_session.has_received_message());
     }
 }
