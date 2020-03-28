@@ -19,9 +19,9 @@
 //! but no error code is provided.
 
 use olm_sys;
-use std::fmt::Debug;
-use std::fmt;
 use std::error::Error;
+use std::fmt;
+use std::fmt::Debug;
 
 /// Since libolm does not do heap allocation and instead relies on the user to
 /// provide already allocated buffers, a lot of potential errors regarding
@@ -41,6 +41,19 @@ pub(crate) fn olm_error() -> usize {
     unsafe { olm_sys::olm_error() }
 }
 
+static BAD_ACCOUNT_KEY: &str = "The supplied account key is invalid";
+static INVALID_BASE64: &str = "The input base64 was invalid";
+static BAD_MSG_KEY_ID: &str = "The message references an unknown key id";
+static BAD_MSG_FMT: &str = "The message couldn't be decoded";
+static BAD_MSG_MAC: &str = "The message couldn't be decrypted";
+static BAD_MSG_VERSION: &str = "The message version is unsupported";
+static BAD_SESSION_KEY: &str = "Can't initialise the inbound group session, invalid session key";
+static BAD_MSG_INDEX: &str =
+    "Can't decode the message, message index is earlier than our earliest known session key";
+static NOT_ENOUGH_RAND: &str = "Not enough entropy was supplied";
+static BUFFER_SMALL: &str = "Supplied output buffer is too small";
+static UNKNOWN: &str = "An unknown error occured.";
+
 /// All errors that could be caused by an operation regarding an `OlmAccount`.
 /// Errors are named exactly like the ones in libolm.
 #[derive(Debug, PartialEq)]
@@ -56,18 +69,20 @@ pub enum OlmAccountError {
 impl fmt::Display for OlmAccountError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let message = match self {
-            OlmAccountError::BadAccountKey => "The supplied account key is invalid.",
-            OlmAccountError::BadMessageKeyId => "The message references an unknown key id.",
-            OlmAccountError::InvalidBase64 => "The input base64 was invalid.",
-            OlmAccountError::NotEnoughRandom => "Not enough entropy was supplied.",
-            OlmAccountError::OutputBufferTooSmall => "Supplied output buffer is too small.",
-            OlmAccountError::Unknown => "A unknown error occured.",
+            OlmAccountError::BadAccountKey => BAD_ACCOUNT_KEY,
+            OlmAccountError::BadMessageKeyId => BAD_MSG_KEY_ID,
+            OlmAccountError::InvalidBase64 => INVALID_BASE64,
+            OlmAccountError::NotEnoughRandom => NOT_ENOUGH_RAND,
+            OlmAccountError::OutputBufferTooSmall => BUFFER_SMALL,
+            OlmAccountError::Unknown => UNKNOWN,
         };
         write!(f, "{}", message)
     }
 }
 
 impl Error for OlmAccountError {}
+impl Error for OlmSessionError {}
+impl Error for OlmGroupSessionError {}
 
 /// All errors that could be caused by an operation regarding `OlmUitlity`.
 /// Errors are named exactly like the ones in libolm.
@@ -94,6 +109,23 @@ pub enum OlmSessionError {
     Unknown,
 }
 
+impl fmt::Display for OlmSessionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let message = match self {
+            OlmSessionError::BadAccountKey => BAD_ACCOUNT_KEY,
+            OlmSessionError::BadMessageKeyId => BAD_MSG_KEY_ID,
+            OlmSessionError::BadMessageFormat => BAD_MSG_FMT,
+            OlmSessionError::BadMessageMac => BAD_MSG_MAC,
+            OlmSessionError::BadMessageVersion => BAD_MSG_VERSION,
+            OlmSessionError::InvalidBase64 => INVALID_BASE64,
+            OlmSessionError::NotEnoughRandom => NOT_ENOUGH_RAND,
+            OlmSessionError::OutputBufferTooSmall => BUFFER_SMALL,
+            OlmSessionError::Unknown => UNKNOWN,
+        };
+        write!(f, "{}", message)
+    }
+}
+
 /// All errors that could be caused by an operation regarding
 /// `OlmOutboundGroupSession` and `OlmInboundGroupSession`.
 /// Errors are named exactly like the ones in libolm.
@@ -109,4 +141,22 @@ pub enum OlmGroupSessionError {
     OutputBufferTooSmall,
     UnknownMessageIndex,
     Unknown,
+}
+
+impl fmt::Display for OlmGroupSessionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let message = match self {
+            OlmGroupSessionError::BadAccountKey => BAD_ACCOUNT_KEY,
+            OlmGroupSessionError::BadSessionKey => BAD_SESSION_KEY,
+            OlmGroupSessionError::UnknownMessageIndex => BAD_MSG_INDEX,
+            OlmGroupSessionError::BadMessageFormat => BAD_MSG_FMT,
+            OlmGroupSessionError::BadMessageMac => BAD_MSG_MAC,
+            OlmGroupSessionError::BadMessageVersion => BAD_MSG_VERSION,
+            OlmGroupSessionError::InvalidBase64 => INVALID_BASE64,
+            OlmGroupSessionError::NotEnoughRandom => NOT_ENOUGH_RAND,
+            OlmGroupSessionError::OutputBufferTooSmall => BUFFER_SMALL,
+            OlmGroupSessionError::Unknown => UNKNOWN,
+        };
+        write!(f, "{}", message)
+    }
 }
