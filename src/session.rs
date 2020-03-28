@@ -21,13 +21,14 @@ use crate::errors::OlmSessionError;
 use crate::getrandom;
 use crate::PicklingMode;
 use std::cmp::Ordering;
+use std::convert::TryFrom;
 use std::ffi::CStr;
 
 use olm_sys;
 use zeroize::Zeroizing;
 
 /// Either an outbound or inbound session for secure communication.
-#[derive(Eq)]
+#[derive(Debug, Eq)]
 pub struct OlmSession {
     pub(crate) olm_session_ptr: *mut olm_sys::OlmSession,
     #[used]
@@ -61,7 +62,9 @@ pub enum OlmMessage {
 impl OlmMessage {
     pub fn from_type_and_ciphertext(message_type: usize, ciphertext: String) -> Result<Self, ()> {
         match message_type {
-            olm_sys::OLM_MESSAGE_TYPE_PRE_KEY => Ok(OlmMessage::PreKey(PreKeyMessage::new(ciphertext))),
+            olm_sys::OLM_MESSAGE_TYPE_PRE_KEY => {
+                Ok(OlmMessage::PreKey(PreKeyMessage::new(ciphertext)))
+            }
             olm_sys::OLM_MESSAGE_TYPE_MESSAGE => Ok(OlmMessage::Message(Message::new(ciphertext))),
             _ => Err(()),
         }
@@ -377,10 +380,7 @@ impl OlmSession {
     /// # Panics
     /// * `OutputBufferTooSmall` on plaintext output buffer
     ///
-    pub fn decrypt(
-        &self,
-        message: OlmMessage,
-    ) -> Result<String, OlmSessionError> {
+    pub fn decrypt(&self, message: OlmMessage) -> Result<String, OlmSessionError> {
         // get the usize value associated with the supplied message type
         let (message_type, mut ciphertext) = message.to_tuple();
         let message_type_val = match message_type {
@@ -533,7 +533,7 @@ impl OlmSession {
     pub fn matches_inbound_session_from(
         &self,
         their_identity_key: &str,
-        mut message : PreKeyMessage,
+        mut message: PreKeyMessage,
     ) -> Result<bool, OlmSessionError> {
         let their_identity_key_buf = their_identity_key.as_bytes();
         let their_identity_key_ptr = their_identity_key_buf.as_ptr() as *const _;
@@ -568,6 +568,18 @@ impl OlmSession {
 pub enum OlmMessageType {
     PreKey,
     Message,
+}
+
+impl TryFrom<usize> for OlmMessageType {
+    type Error = ();
+
+    fn try_from(message_type: usize) -> Result<OlmMessageType, ()> {
+        match message_type {
+            olm_sys::OLM_MESSAGE_TYPE_PRE_KEY => Ok(OlmMessageType::PreKey),
+            olm_sys::OLM_MESSAGE_TYPE_MESSAGE => Ok(OlmMessageType::Message),
+            _ => Err(()),
+        }
+    }
 }
 
 /// orders by unicode code points (which is a superset of ASCII)
@@ -610,9 +622,17 @@ mod test {
         alice.generate_one_time_keys(1);
 
         let identity_key = alice.parsed_identity_keys().ed25519().to_owned();
-        let one_time_key = alice.parsed_one_time_keys().curve25519().values().nth(0).unwrap().to_owned();
+        let one_time_key = alice
+            .parsed_one_time_keys()
+            .curve25519()
+            .values()
+            .nth(0)
+            .unwrap()
+            .to_owned();
 
-        let outbound_session = bob.create_outbound_session(&identity_key, &one_time_key).unwrap();
+        let outbound_session = bob
+            .create_outbound_session(&identity_key, &one_time_key)
+            .unwrap();
 
         assert_eq!(
             OlmMessageType::PreKey,

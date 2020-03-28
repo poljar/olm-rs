@@ -1,6 +1,6 @@
 use olm_rs::{
     account::OlmAccount,
-    session::{OlmSession, OlmMessage},
+    session::{OlmMessage, OlmSession},
     PicklingMode,
 };
 
