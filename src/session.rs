@@ -36,30 +36,46 @@ pub struct OlmSession {
 }
 
 #[derive(Debug, Clone)]
+/// A encrypted Olm message.
 pub struct Message(String);
 
 #[derive(Debug, Clone)]
+/// A encrypted Olm pre-key message.
+///
+/// This message, unlike a normal Message, can be used to create new Olm sessions.
 pub struct PreKeyMessage(String);
 
 impl PreKeyMessage {
+    /// Create a new Olm pre-key message from a String containing a ciphertext.
     pub fn new(message: String) -> Self {
         PreKeyMessage(message)
     }
 }
 
 impl Message {
+    /// Create a new Olm message from a String containing a ciphertext.
     pub fn new(ciphertext: String) -> Self {
         Message(ciphertext)
     }
 }
 
 #[derive(Debug, Clone)]
+/// An enum over the different Olm message types.
 pub enum OlmMessage {
+    /// The normal Olm message.
     Message(Message),
+    /// The pre-key Olm message.
     PreKey(PreKeyMessage),
 }
 
 impl OlmMessage {
+    /// Create an OlmMessage from a message type and the ciphertext.
+    ///
+    /// # Arguments
+    /// * `message_type` - The type of the Olm message, 0 for a pre-key message,
+    /// 1 for a normal one.
+    ///
+    /// * `ciphertext` - The encrypted ciphertext of the message.
     pub fn from_type_and_ciphertext(message_type: usize, ciphertext: String) -> Result<Self, ()> {
         match message_type {
             olm_sys::OLM_MESSAGE_TYPE_PRE_KEY => {
@@ -71,6 +87,7 @@ impl OlmMessage {
     }
 
     #[allow(clippy::wrong_self_convention)]
+    /// Convert a OlmMessage into a tuple of the OlmMessageType and ciphertext string.
     pub fn to_tuple(self) -> (OlmMessageType, String) {
         match self {
             OlmMessage::Message(m) => (OlmMessageType::Message, m.0),
