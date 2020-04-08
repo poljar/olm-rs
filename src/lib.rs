@@ -56,6 +56,14 @@ pub(crate) fn getrandom(buffer: &mut [u8]) {
     );
 }
 
+/// Marking these as Send is safe because nothing will modify the pointer under
+/// us from the C side. Sync on the other hand is unsafe since libolm doesn't do
+/// any synchronization.
+unsafe impl Send for account::OlmAccount {}
+unsafe impl Send for session::OlmSession {}
+unsafe impl Send for inbound_group_session::OlmInboundGroupSession {}
+unsafe impl Send for outbound_group_session::OlmOutboundGroupSession {}
+
 /// Used for storing the version number of libolm.
 /// Solely returned by [`get_library_version()`](fn.get_library_version.html).
 #[derive(Debug, PartialEq)]
