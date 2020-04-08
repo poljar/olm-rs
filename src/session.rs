@@ -587,6 +587,15 @@ pub enum OlmMessageType {
     Message,
 }
 
+impl Into<usize> for OlmMessageType {
+    fn into(self) -> usize {
+        match self {
+            OlmMessageType::PreKey => olm_sys::OLM_MESSAGE_TYPE_PRE_KEY,
+            OlmMessageType::Message => olm_sys::OLM_MESSAGE_TYPE_MESSAGE,
+        }
+    }
+}
+
 impl TryFrom<usize> for OlmMessageType {
     type Error = ();
 
