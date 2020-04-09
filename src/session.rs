@@ -36,7 +36,7 @@ pub struct OlmSession {
 }
 
 #[derive(Debug, Clone)]
-/// A encrypted Olm message.
+/// An encrypted Olm message.
 pub struct Message(String);
 
 #[derive(Debug, Clone)]
