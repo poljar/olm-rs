@@ -47,14 +47,14 @@ pub struct PreKeyMessage(String);
 
 impl PreKeyMessage {
     /// Create a new Olm pre-key message from a String containing a ciphertext.
-    pub fn new(message: String) -> Self {
+    fn new(message: String) -> Self {
         PreKeyMessage(message)
     }
 }
 
 impl Message {
     /// Create a new Olm message from a String containing a ciphertext.
-    pub fn new(ciphertext: String) -> Self {
+    fn new(ciphertext: String) -> Self {
         Message(ciphertext)
     }
 }
