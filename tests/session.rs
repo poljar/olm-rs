@@ -1,6 +1,6 @@
 use olm_rs::{
     account::OlmAccount,
-    session::{OlmMessageType, OlmSession},
+    session::{OlmMessage, OlmSession},
     PicklingMode,
 };
 
@@ -17,6 +17,13 @@ fn create_session_pair() -> (OlmSession, OlmSession) {
         .create_outbound_session(&identity_key_b, &one_time_key_b)
         .unwrap();
     let pre_key = outbound.encrypt(""); // Payload does not matter for PreKey
+
+    let pre_key = if let OlmMessage::PreKey(m) = pre_key {
+        m
+    } else {
+        panic!("Wrong first message type received, can't crate session");
+    };
+
     let inbound = account_b.create_inbound_session(pre_key).unwrap();
     (inbound, outbound)
 }
@@ -24,11 +31,6 @@ fn create_session_pair() -> (OlmSession, OlmSession) {
 #[test]
 fn olm_outbound_session_creation() {
     let (_, outbound_session) = create_session_pair();
-
-    assert_eq!(
-        OlmMessageType::PreKey,
-        outbound_session.encrypt_message_type()
-    );
     assert!(!outbound_session.has_received_message());
 }
 
@@ -36,9 +38,12 @@ fn olm_outbound_session_creation() {
 fn olm_encrypt_decrypt() {
     let (inbound_session, outbound_session) = create_session_pair();
     let encrypted = outbound_session.encrypt("Hello world!");
-    let decrypted = inbound_session
-        .decrypt(outbound_session.encrypt_message_type(), encrypted)
-        .unwrap();
+    if let OlmMessage::PreKey(m) = &encrypted {
+        assert!(inbound_session.matches_inbound_session(m.clone()).unwrap());
+    }
+
+    let decrypted = inbound_session.decrypt(encrypted).unwrap();
+
     assert_eq!(decrypted, "Hello world!");
 }
 

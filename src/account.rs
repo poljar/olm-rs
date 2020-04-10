@@ -17,7 +17,7 @@
 use crate::errors;
 use crate::errors::{OlmAccountError, OlmSessionError};
 use crate::getrandom;
-use crate::session::OlmSession;
+use crate::session::{OlmSession, PreKeyMessage};
 use crate::PicklingMode;
 use olm_sys;
 #[cfg(feature = "deserialization")]
@@ -485,6 +485,11 @@ impl OlmAccount {
 
     /// Creates an inbound session for sending/receiving messages from a received 'prekey' message.
     ///
+    /// # Arguments
+    ///
+    /// * `message` - An Olm pre-key message that was encrypted for this
+    /// account.
+    ///
     /// # Errors
     /// * `InvalidBase64`
     /// * `BadMessageVersion`
@@ -493,12 +498,18 @@ impl OlmAccount {
     ///
     pub fn create_inbound_session(
         &self,
-        one_time_key_message: String,
+        message: PreKeyMessage,
     ) -> Result<OlmSession, OlmSessionError> {
-        OlmSession::create_inbound_session(self, one_time_key_message)
+        OlmSession::create_inbound_session(self, message)
     }
 
     /// Creates an inbound session for sending/receiving messages from a received 'prekey' message.
+    ///
+    /// * `their_identity_key` - The identity key of an Olm account that
+    /// encrypted this Olm message.
+    ///
+    /// * `message` - An Olm pre-key message that was encrypted for this
+    /// account.
     ///
     /// # Errors
     /// * `InvalidBase64`
@@ -509,9 +520,9 @@ impl OlmAccount {
     pub fn create_inbound_session_from(
         &self,
         their_identity_key: &str,
-        one_time_key_message: String,
+        message: PreKeyMessage,
     ) -> Result<OlmSession, OlmSessionError> {
-        OlmSession::create_inbound_session_from(self, their_identity_key, one_time_key_message)
+        OlmSession::create_inbound_session_from(self, their_identity_key, message)
     }
 
     /// Creates an outbound session for sending messages to a specific
