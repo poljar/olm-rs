@@ -52,6 +52,7 @@ static BAD_MSG_INDEX: &str =
     "Can't decode the message, message index is earlier than our earliest known session key";
 static NOT_ENOUGH_RAND: &str = "Not enough entropy was supplied";
 static BUFFER_SMALL: &str = "Supplied output buffer is too small";
+static INPUT_BUFFER_SMALL: &str = "Supplied input buffer is too small";
 static UNKNOWN: &str = "An unknown error occured.";
 
 /// All errors that could be caused by an operation regarding an `OlmAccount`.
@@ -156,6 +157,33 @@ impl fmt::Display for OlmGroupSessionError {
             OlmGroupSessionError::NotEnoughRandom => NOT_ENOUGH_RAND,
             OlmGroupSessionError::OutputBufferTooSmall => BUFFER_SMALL,
             OlmGroupSessionError::Unknown => UNKNOWN,
+        };
+        write!(f, "{}", message)
+    }
+}
+
+/// All errors that could be caused by an operation regarding
+/// `OlmSas`.
+/// Errors are named exactly like the ones in libolm.
+#[derive(Debug, PartialEq)]
+pub enum OlmSasError {
+    NotEnoughRandom,
+    OutputBufferTooSmall,
+    InputBufferTooSmall,
+    Unknown,
+    OtherPublicKeyUnset,
+    InvalidLength,
+}
+
+impl fmt::Display for OlmSasError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let message = match self {
+            OlmSasError::NotEnoughRandom => NOT_ENOUGH_RAND,
+            OlmSasError::OutputBufferTooSmall => BUFFER_SMALL,
+            OlmSasError::InputBufferTooSmall => INPUT_BUFFER_SMALL,
+            OlmSasError::OtherPublicKeyUnset => "The other public key isn't set",
+            OlmSasError::InvalidLength => "The length can't be zero",
+            OlmSasError::Unknown => UNKNOWN,
         };
         write!(f, "{}", message)
     }
