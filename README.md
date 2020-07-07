@@ -4,6 +4,9 @@ This project is dedicated towards creating a safe wrapper for [libolm](https://g
 
 Matrix room for discussion: *[#olm-rs:matrix.org](https://matrix.to/#/#olm-rs:matrix.org)*
 
+If you are looking for a Matrix client library, you should look [here](https://crates.io/crates/matrix-sdk) instead.
+This project concerns itself purely with end-to-end encryption, and not Matrix protocol integration.
+
 ### Building
 
 `libolm` is compiled and statically linked on building `olm-sys` - so no further setup is required.
