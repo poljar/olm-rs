@@ -36,6 +36,7 @@ pub mod account;
 pub mod errors;
 pub mod inbound_group_session;
 pub mod outbound_group_session;
+pub mod pk;
 pub mod sas;
 pub mod session;
 pub mod utility;

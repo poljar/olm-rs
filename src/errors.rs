@@ -188,3 +188,107 @@ impl fmt::Display for OlmSasError {
         write!(f, "{}", message)
     }
 }
+
+/// All errors that could be caused by an operation regarding
+/// `OlmPkSigning`.
+/// Errors are named exactly like the ones in libolm.
+#[derive(Debug, PartialEq)]
+pub enum OlmPkSigningError {
+    InvalidSeed,
+    OutputBufferTooSmall,
+    InputBufferTooSmall,
+    Unknown,
+}
+
+impl fmt::Display for OlmPkSigningError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let message = match self {
+            OlmPkSigningError::InvalidSeed => "The given seed is too short",
+            OlmPkSigningError::OutputBufferTooSmall => BUFFER_SMALL,
+            OlmPkSigningError::InputBufferTooSmall => INPUT_BUFFER_SMALL,
+            OlmPkSigningError::Unknown => UNKNOWN,
+        };
+        write!(f, "{}", message)
+    }
+}
+
+impl From<&str> for OlmPkSigningError {
+    fn from(value: &str) -> Self {
+        match value {
+            "OUTPUT_BUFFER_TOO_SMALL" => OlmPkSigningError::OutputBufferTooSmall,
+            "INPUT_BUFFER_TOO_SMALL" => OlmPkSigningError::OutputBufferTooSmall,
+            _ => OlmPkSigningError::Unknown,
+        }
+    }
+}
+
+/// All errors that could be caused by an operation regarding
+/// `OlmPkEncryption`.
+/// Errors are named exactly like the ones in libolm.
+#[derive(Debug, PartialEq)]
+pub enum OlmPkEncryptionError {
+    OutputBufferTooSmall,
+    InputBufferTooSmall,
+    Unknown,
+}
+
+impl fmt::Display for OlmPkEncryptionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let message = match self {
+            OlmPkEncryptionError::OutputBufferTooSmall => BUFFER_SMALL,
+            OlmPkEncryptionError::InputBufferTooSmall => INPUT_BUFFER_SMALL,
+            OlmPkEncryptionError::Unknown => UNKNOWN,
+        };
+        write!(f, "{}", message)
+    }
+}
+
+impl From<&str> for OlmPkEncryptionError {
+    fn from(value: &str) -> Self {
+        match value {
+            "OUTPUT_BUFFER_TOO_SMALL" => OlmPkEncryptionError::OutputBufferTooSmall,
+            "INPUT_BUFFER_TOO_SMALL" => OlmPkEncryptionError::OutputBufferTooSmall,
+            _ => OlmPkEncryptionError::Unknown,
+        }
+    }
+}
+
+/// All errors that could be caused by an operation regarding
+/// `OlmPkDecryption`.
+/// Errors are named exactly like the ones in libolm.
+#[derive(Debug, PartialEq)]
+pub enum OlmPkDecryptionError {
+    BadAccountKey,
+    BadMessageMac,
+    InvalidBase64,
+    OutputBufferTooSmall,
+    InputBufferTooSmall,
+    Unknown(String),
+}
+
+impl fmt::Display for OlmPkDecryptionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let message = match self {
+            OlmPkDecryptionError::InvalidBase64 => INVALID_BASE64,
+            OlmPkDecryptionError::BadAccountKey => BAD_ACCOUNT_KEY,
+            OlmPkDecryptionError::BadMessageMac => BAD_MSG_MAC,
+            OlmPkDecryptionError::OutputBufferTooSmall => BUFFER_SMALL,
+            OlmPkDecryptionError::InputBufferTooSmall => INPUT_BUFFER_SMALL,
+            OlmPkDecryptionError::Unknown(e) => e,
+        };
+        write!(f, "{}", message)
+    }
+}
+
+impl From<&str> for OlmPkDecryptionError {
+    fn from(value: &str) -> Self {
+        match value {
+            "INVALID_BASE64" => OlmPkDecryptionError::InvalidBase64,
+            "BAD_MESSAGE_MAC" => OlmPkDecryptionError::BadMessageMac,
+            "BAD_ACCOUNT_KEY" => OlmPkDecryptionError::BadAccountKey,
+            "OUTPUT_BUFFER_TOO_SMALL" => OlmPkDecryptionError::OutputBufferTooSmall,
+            "INPUT_BUFFER_TOO_SMALL" => OlmPkDecryptionError::OutputBufferTooSmall,
+            m => OlmPkDecryptionError::Unknown(m.to_owned()),
+        }
+    }
+}
