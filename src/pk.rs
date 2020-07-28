@@ -539,7 +539,7 @@ impl OlmPkSigning {
 
 #[cfg(test)]
 mod test {
-    use crate::pk::{OlmPkSigning, OlmPkDecryption, OlmPkEncryption};
+    use crate::pk::{OlmPkDecryption, OlmPkEncryption, OlmPkSigning};
     use crate::utility::OlmUtility;
     use crate::PicklingMode;
 
