@@ -10,7 +10,9 @@ This project concerns itself purely with end-to-end encryption, and not Matrix p
 ### Building
 
 `libolm` is compiled and statically linked on building `olm-sys` - so no further setup is required.
-Please note however that `libolm` still needs `libstdc++` on your system (and it should already be there).
+Please note however that `libolm` still needs `libstdc++`/`libc++` on your system (and it should already be there).
+
+For further building options and information see the [Readme of `olm-sys`](https://gitlab.gnome.org/BrainBlasted/olm-sys/-/blob/master/README.md).
 
 ### Contributing
 If you are considering to contribute, take a look at the CONTRIBUTING guide.
