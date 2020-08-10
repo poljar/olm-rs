@@ -119,7 +119,7 @@ impl OlmSas {
     /// # Arguments
     ///
     /// * `public_key` - The public key of the other user.
-    pub fn set_their_public_key(&mut self, public_key: &str) -> Result<(), OlmSasError> {
+    pub fn set_their_public_key(&mut self, public_key: String) -> Result<(), OlmSasError> {
         let ret = unsafe {
             olm_sys::olm_sas_set_their_key(
                 self.sas_ptr,
