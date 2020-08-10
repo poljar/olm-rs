@@ -36,6 +36,8 @@ pub mod account;
 pub mod errors;
 pub mod inbound_group_session;
 pub mod outbound_group_session;
+pub mod pk;
+pub mod sas;
 pub mod session;
 pub mod utility;
 
@@ -61,6 +63,10 @@ pub(crate) fn getrandom(buffer: &mut [u8]) {
 /// any synchronization.
 unsafe impl Send for account::OlmAccount {}
 unsafe impl Send for session::OlmSession {}
+unsafe impl Send for sas::OlmSas {}
+unsafe impl Send for pk::OlmPkDecryption {}
+unsafe impl Send for pk::OlmPkEncryption {}
+unsafe impl Send for pk::OlmPkSigning {}
 unsafe impl Send for inbound_group_session::OlmInboundGroupSession {}
 unsafe impl Send for outbound_group_session::OlmOutboundGroupSession {}
 
