@@ -423,7 +423,7 @@ impl OlmPkSigning {
     ///     `OlmPkSigning::generate_seed()`. The correct length can be checked
     ///     using `OlmPkSigning::seed_length()` as well.
     pub fn new(mut seed: Vec<u8>) -> Result<Self, OlmPkSigningError> {
-        if seed.is_empty() {
+        if seed.len() != OlmPkSigning::seed_length() {
             return Err(OlmPkSigningError::InvalidSeed);
         }
 
@@ -552,6 +552,12 @@ mod test {
     #[test]
     fn invalid_seed() {
         assert!(OlmPkSigning::new(vec![]).is_err());
+
+        let lo_seed_len = OlmPkSigning::seed_length() - 1;
+        let hi_seed_len = OlmPkSigning::seed_length() + 1;
+
+        assert!(OlmPkSigning::new(vec![0; lo_seed_len]).is_err());
+        assert!(OlmPkSigning::new(vec![0; hi_seed_len]).is_err());
     }
 
     #[test]
