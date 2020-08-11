@@ -1,0 +1,41 @@
+# Use Rust docker image, see: https://hub.docker.com/_/rust/
+image: rust:latest
+
+# Defines stages which are to be executed
+stages:
+  - build
+  - lint
+
+# Install dependencies for building libolm's bindings
+before_script:
+  - apt-get update -qq
+  - apt-get install -y -qq llvm-dev libclang-dev clang
+  - mkdir -p .cargo
+  - export CARGO_HOME="${PWD}/.cargo"
+  - rustc --version && cargo --version
+
+# Run `cargo build` for the project with stable Rust
+run-build:
+  stage: build
+  image: rust:latest
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - target/
+      - .cargo/
+  script:
+    - cargo build
+    - cargo test
+
+run-lint:
+  stage: lint
+  image: rust:latest
+  cache:
+    key: "$CI_COMMIT_REF_SLUG-lint"
+    paths:
+      - target/
+      - .cargo/
+  script:
+    - cargo fmt --all -- --check
+    - cargo clippy
+
