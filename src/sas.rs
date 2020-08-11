@@ -21,8 +21,8 @@
 //! let mut alice = OlmSas::new();
 //! let mut bob = OlmSas::new();
 //!
-//! alice.set_their_public_key(&bob.public_key()).unwrap();
-//! bob.set_their_public_key(&alice.public_key()).unwrap();
+//! alice.set_their_public_key(bob.public_key()).unwrap();
+//! bob.set_their_public_key(alice.public_key()).unwrap();
 //!
 //! assert_eq!(
 //!     alice.generate_bytes("", 5).unwrap(),
@@ -233,8 +233,8 @@ mod test {
     fn test_set_pubkey() {
         let mut alice = OlmSas::new();
 
-        assert!(alice.set_their_public_key(&alice.public_key()).is_ok());
-        assert!(alice.set_their_public_key("").is_err());
+        assert!(alice.set_their_public_key(alice.public_key()).is_ok());
+        assert!(alice.set_their_public_key("".to_string()).is_err());
     }
 
     #[test]
@@ -244,8 +244,8 @@ mod test {
 
         assert!(alice.generate_bytes("", 5).is_err());
 
-        assert!(alice.set_their_public_key(&bob.public_key()).is_ok());
-        assert!(bob.set_their_public_key(&alice.public_key()).is_ok());
+        assert!(alice.set_their_public_key(bob.public_key()).is_ok());
+        assert!(bob.set_their_public_key(alice.public_key()).is_ok());
 
         assert_eq!(
             alice.generate_bytes("", 5).unwrap(),
@@ -266,8 +266,8 @@ mod test {
 
         assert!(alice.calculate_mac(message, "").is_err());
 
-        assert!(alice.set_their_public_key(&bob.public_key()).is_ok());
-        assert!(bob.set_their_public_key(&alice.public_key()).is_ok());
+        assert!(alice.set_their_public_key(bob.public_key()).is_ok());
+        assert!(bob.set_their_public_key(alice.public_key()).is_ok());
 
         assert_eq!(
             alice.calculate_mac(message, "").unwrap(),
