@@ -36,6 +36,8 @@ run-lint:
       - target/
       - .cargo/
   script:
+    - rustup component add rustfmt
+    - rustup component add clippy
     - cargo fmt --all -- --check
     - cargo clippy
 
