@@ -473,11 +473,11 @@ impl OlmPkSigning {
     /// object.
     pub fn generate_seed() -> Vec<u8> {
         let length = OlmPkSigning::seed_length();
-        let mut buffer = vec![0; length];
+        let mut buffer = Zeroizing::new(vec![0; length]);
 
         getrandom(&mut buffer);
 
-        buffer
+        buffer.to_vec()
     }
 
     /// Get the public key of the the OlmPkSigning object.
@@ -558,6 +558,13 @@ mod test {
 
         assert!(OlmPkSigning::new(vec![0; lo_seed_len]).is_err());
         assert!(OlmPkSigning::new(vec![0; hi_seed_len]).is_err());
+    }
+
+    #[test]
+    fn seed_random() {
+        let seed_a = OlmPkSigning::generate_seed();
+        let seed_b = OlmPkSigning::generate_seed();
+        assert_ne!(&seed_a[..], &seed_b[..]);
     }
 
     #[test]

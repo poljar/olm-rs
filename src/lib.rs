@@ -42,6 +42,7 @@ pub mod session;
 pub mod utility;
 
 use getrandom as random;
+use zeroize::Zeroizing;
 
 /// A getrandom wrapper that panics if the call is unsuccessful.
 ///
@@ -52,7 +53,7 @@ use getrandom as random;
 /// # Panics
 ///
 /// Panics if the operating system can't provide enough random data.
-pub(crate) fn getrandom(buffer: &mut [u8]) {
+pub(crate) fn getrandom(buffer: &mut Zeroizing<Vec<u8>>) {
     random::getrandom(buffer).expect(
         "Operating system didn't provide enough random data to securely generate the private keys.",
     );
