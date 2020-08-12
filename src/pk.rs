@@ -100,7 +100,7 @@ impl OlmPkEncryption {
         error.into()
     }
 
-    /// """Encrypt a plaintext message.
+    /// Encrypt a plaintext message.
     ///
     /// Returns the encrypted PkMessage.
     ///
