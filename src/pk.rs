@@ -215,7 +215,7 @@ impl OlmPkDecryption {
         }
 
         let public_key =
-            String::from_utf8(key_buffer).expect("Can't conver the public key buffer to a string");
+            String::from_utf8(key_buffer).expect("Can't convert the public key buffer to a string");
 
         Self {
             ptr,
@@ -516,9 +516,9 @@ impl OlmPkSigning {
     /// libolm.
     /// * on malformed UTF-8 coding of the signature provided by libolm.
     pub fn sign(&self, message: &str) -> String {
-        let signature_length = unsafe { olm_sys::olm_pk_signature_length() };
+        let signature_len = unsafe { olm_sys::olm_pk_signature_length() };
 
-        let mut signature = vec![0; signature_length];
+        let mut signature = vec![0; signature_len];
 
         let ret = unsafe {
             olm_sys::olm_pk_sign(
@@ -526,7 +526,7 @@ impl OlmPkSigning {
                 message.as_ptr() as *mut _,
                 message.len(),
                 signature.as_mut_ptr() as *mut _,
-                signature_length,
+                signature_len,
             )
         };
 
