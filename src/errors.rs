@@ -170,9 +170,9 @@ pub enum OlmSasError {
     NotEnoughRandom,
     OutputBufferTooSmall,
     InputBufferTooSmall,
-    Unknown,
     OtherPublicKeyUnset,
     InvalidLength,
+    Unknown,
 }
 
 impl fmt::Display for OlmSasError {
