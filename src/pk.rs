@@ -117,8 +117,8 @@ impl OlmPkEncryption {
     pub fn encrypt(&self, plaintext: &str) -> PkMessage {
         let random_length = unsafe { olm_sys::olm_pk_encrypt_random_length(self.ptr) };
 
-        let mut random_buffer = vec![0; random_length];
-        getrandom(&mut random_buffer);
+        let mut random_buf = Zeroizing::new(vec![0; random_length]);
+        getrandom(&mut random_buf);
 
         let ciphertext_length =
             unsafe { olm_sys::olm_pk_ciphertext_length(self.ptr, plaintext.len()) };
@@ -142,8 +142,8 @@ impl OlmPkEncryption {
                 mac.len(),
                 ephemeral_key.as_mut_ptr() as *mut _,
                 ephemeral_key.len(),
-                random_buffer.as_ptr() as *mut _,
-                random_buffer.len(),
+                random_buf.as_ptr() as *mut _,
+                random_buf.len(),
             )
         };
 
@@ -191,9 +191,9 @@ impl OlmPkDecryption {
     pub fn new() -> Self {
         let (ptr, buf) = OlmPkDecryption::init();
 
-        let random_length = unsafe { olm_sys::olm_pk_private_key_length() };
+        let random_len = unsafe { olm_sys::olm_pk_private_key_length() };
 
-        let mut random_buf = vec![0; random_length];
+        let mut random_buf = Zeroizing::new(vec![0; random_len]);
         getrandom(&mut random_buf);
 
         let key_length = unsafe { olm_sys::olm_pk_key_length() };
