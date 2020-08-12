@@ -9,10 +9,10 @@ edition = "2018"
 [package.metadata]
 cargo-fuzz = true
 
+[dependencies]
+libfuzzer-sys = "0.3.3"
 [dependencies.olm-rs]
 path = ".."
-[dependencies.libfuzzer-sys]
-git = "https://github.com/rust-fuzz/libfuzzer-sys.git"
 
 # Prevent this from interfering with workspaces
 [workspace]
@@ -23,7 +23,9 @@ name = "olm_utility"
 path = "fuzz_targets/olm_utility.rs"
 
 [[bin]]
-name = "olm_pk"
-path = "fuzz_targets/olm_pk.rs"
-test = false
-doc = false
+name = "olm_pk1"
+path = "fuzz_targets/olm_pk1.rs"
+
+[[bin]]
+name = "olm_pk2"
+path = "fuzz_targets/olm_pk2.rs"
