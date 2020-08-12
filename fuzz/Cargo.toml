@@ -21,3 +21,9 @@ members = ["."]
 [[bin]]
 name = "olm_utility"
 path = "fuzz_targets/olm_utility.rs"
+
+[[bin]]
+name = "olm_pk"
+path = "fuzz_targets/olm_pk.rs"
+test = false
+doc = false
