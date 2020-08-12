@@ -15,7 +15,6 @@
 //! This module wraps around all functions following the pattern `olm_utility_*`.
 
 use crate::errors::{self, OlmUtilityError};
-use olm_sys;
 use std::ffi::CStr;
 
 pub struct OlmUtility {

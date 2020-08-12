@@ -18,7 +18,6 @@
 //! for returning an error, in case an error is encountered by `libolm`,
 //! but no error code is provided.
 
-use olm_sys;
 use std::error::Error;
 use std::fmt;
 use std::fmt::Debug;

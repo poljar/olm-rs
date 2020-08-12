@@ -18,7 +18,6 @@ use crate::errors;
 use crate::errors::OlmGroupSessionError;
 use crate::getrandom;
 use crate::PicklingMode;
-use olm_sys;
 use std::ffi::CStr;
 
 use zeroize::Zeroizing;

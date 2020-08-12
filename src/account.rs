@@ -19,7 +19,6 @@ use crate::errors::{OlmAccountError, OlmSessionError};
 use crate::getrandom;
 use crate::session::{OlmSession, PreKeyMessage};
 use crate::PicklingMode;
-use olm_sys;
 #[cfg(feature = "deserialization")]
 use std::collections::{hash_map::Iter, hash_map::Keys, hash_map::Values, HashMap};
 use std::ffi::CStr;

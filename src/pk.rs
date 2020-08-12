@@ -16,7 +16,6 @@
 
 use std::ffi::CStr;
 
-use olm_sys;
 use zeroize::Zeroizing;
 
 use crate::errors;
@@ -62,6 +61,12 @@ impl Drop for OlmPkEncryption {
         unsafe {
             olm_sys::olm_clear_pk_encryption(self.ptr);
         }
+    }
+}
+
+impl Default for OlmPkDecryption {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

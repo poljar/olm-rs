@@ -33,7 +33,6 @@
 
 use std::ffi::CStr;
 
-use olm_sys;
 use zeroize::Zeroizing;
 
 use crate::errors;
@@ -45,6 +44,20 @@ pub struct OlmSas {
     #[used]
     sas_buf: Vec<u8>,
     public_key_set: bool,
+}
+
+impl Drop for OlmSas {
+    fn drop(&mut self) {
+        unsafe {
+            olm_sys::olm_clear_sas(self.sas_ptr);
+        }
+    }
+}
+
+impl Default for OlmSas {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl OlmSas {
@@ -207,14 +220,6 @@ impl OlmSas {
             Err(Self::last_error(self.sas_ptr))
         } else {
             Ok(unsafe { String::from_utf8_unchecked(mac_buffer) })
-        }
-    }
-}
-
-impl Drop for OlmSas {
-    fn drop(&mut self) {
-        unsafe {
-            olm_sys::olm_clear_sas(self.sas_ptr);
         }
     }
 }

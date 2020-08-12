@@ -24,7 +24,6 @@ use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::ffi::CStr;
 
-use olm_sys;
 use zeroize::Zeroizing;
 
 /// Either an outbound or inbound session for secure communication.
