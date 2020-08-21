@@ -29,3 +29,15 @@ path = "fuzz_targets/olm_pk1.rs"
 [[bin]]
 name = "olm_pk2"
 path = "fuzz_targets/olm_pk2.rs"
+
+[[bin]]
+name = "olm_sas1"
+path = "fuzz_targets/olm_sas1.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "olm_sas2"
+path = "fuzz_targets/olm_sas2.rs"
+test = false
+doc = false
