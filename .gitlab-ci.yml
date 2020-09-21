@@ -9,7 +9,7 @@ stages:
 # Install dependencies for building libolm's bindings
 before_script:
   - apt-get update -qq
-  - apt-get install -y -qq llvm-dev libclang-dev clang
+  - apt-get install -y -qq llvm-dev libclang-dev clang cmake
   - mkdir -p .cargo
   - export CARGO_HOME="${PWD}/.cargo"
   - rustc --version && cargo --version
