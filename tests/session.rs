@@ -21,7 +21,7 @@ fn create_session_pair() -> (OlmSession, OlmSession) {
     let pre_key = if let OlmMessage::PreKey(m) = pre_key {
         m
     } else {
-        panic!("Wrong first message type received, can't crate session");
+        panic!("Wrong first message type received, can't create session");
     };
 
     let inbound = account_b.create_inbound_session(pre_key).unwrap();
