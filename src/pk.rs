@@ -52,8 +52,7 @@ impl PkMessage {
 /// The encryption part of a PK encrypted channel.
 pub struct OlmPkEncryption {
     ptr: *mut olm_sys::OlmPkEncryption,
-    #[used]
-    buf: Vec<u8>,
+    _buf: Vec<u8>,
 }
 
 impl Drop for OlmPkEncryption {
@@ -94,7 +93,7 @@ impl OlmPkEncryption {
             );
         }
 
-        Self { ptr, buf }
+        Self { ptr, _buf: buf }
     }
 
     fn last_error(ptr: *mut olm_sys::OlmPkEncryption) -> OlmPkEncryptionError {
@@ -171,8 +170,7 @@ impl OlmPkEncryption {
 /// The decryption part of a PK encrypted channel.
 pub struct OlmPkDecryption {
     ptr: *mut olm_sys::OlmPkDecryption,
-    #[used]
-    buf: Vec<u8>,
+    _buf: Vec<u8>,
     public_key: String,
 }
 
@@ -224,7 +222,7 @@ impl OlmPkDecryption {
 
         Self {
             ptr,
-            buf,
+            _buf: buf,
             public_key,
         }
     }
@@ -339,7 +337,7 @@ impl OlmPkDecryption {
         } else {
             Ok(Self {
                 ptr,
-                buf,
+                _buf: buf,
                 public_key,
             })
         }
@@ -407,8 +405,7 @@ impl OlmPkDecryption {
 /// Signs messages using public key cryptography.
 pub struct OlmPkSigning {
     ptr: *mut olm_sys::OlmPkSigning,
-    #[used]
-    buf: Vec<u8>,
+    _buf: Vec<u8>,
     public_key: String,
 }
 
@@ -454,7 +451,7 @@ impl OlmPkSigning {
         } else {
             Ok(Self {
                 ptr,
-                buf: buffer,
+                _buf: buffer,
                 public_key: String::from_utf8(pubkey_buffer)
                     .expect("Can't conver the public key buffer to a string"),
             })

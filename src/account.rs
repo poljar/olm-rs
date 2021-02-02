@@ -37,8 +37,7 @@ use zeroize::Zeroizing;
 pub struct OlmAccount {
     /// Pointer by which libolm acquires the data saved in an instance of OlmAccount
     pub(crate) olm_account_ptr: *mut olm_sys::OlmAccount,
-    #[used]
-    olm_account_buf: Vec<u8>,
+    _olm_account_buf: Vec<u8>,
 }
 
 #[cfg(feature = "deserialization")]
@@ -173,7 +172,7 @@ impl OlmAccount {
         }
         OlmAccount {
             olm_account_ptr,
-            olm_account_buf,
+            _olm_account_buf: olm_account_buf,
         }
     }
 
@@ -264,7 +263,7 @@ impl OlmAccount {
         } else {
             Ok(OlmAccount {
                 olm_account_ptr,
-                olm_account_buf,
+                _olm_account_buf: olm_account_buf,
             })
         }
     }

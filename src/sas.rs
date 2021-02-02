@@ -41,8 +41,7 @@ use crate::getrandom;
 
 pub struct OlmSas {
     sas_ptr: *mut olm_sys::OlmSAS,
-    #[used]
-    sas_buf: Vec<u8>,
+    _sas_buf: Vec<u8>,
     public_key_set: bool,
 }
 
@@ -79,7 +78,7 @@ impl OlmSas {
 
         Self {
             sas_ptr: ptr,
-            sas_buf: buf,
+            _sas_buf: buf,
             public_key_set: false,
         }
     }
