@@ -25,8 +25,7 @@ use zeroize::Zeroizing;
 /// communication in a Megolm session.
 pub struct OlmInboundGroupSession {
     group_session_ptr: *mut olm_sys::OlmInboundGroupSession,
-    #[used]
-    group_session_buf: Vec<u8>,
+    _group_session_buf: Vec<u8>,
 }
 
 impl OlmInboundGroupSession {
@@ -61,7 +60,7 @@ impl OlmInboundGroupSession {
         } else {
             Ok(OlmInboundGroupSession {
                 group_session_ptr: olm_inbound_group_session_ptr,
-                group_session_buf: olm_inbound_group_session_buf,
+                _group_session_buf: olm_inbound_group_session_buf,
             })
         }
     }
@@ -99,7 +98,7 @@ impl OlmInboundGroupSession {
         } else {
             Ok(OlmInboundGroupSession {
                 group_session_ptr: olm_inbound_group_session_ptr,
-                group_session_buf: olm_inbound_group_session_buf,
+                _group_session_buf: olm_inbound_group_session_buf,
             })
         }
     }
@@ -182,7 +181,7 @@ impl OlmInboundGroupSession {
         } else {
             Ok(OlmInboundGroupSession {
                 group_session_ptr: olm_inbound_group_session_ptr,
-                group_session_buf: olm_inbound_group_session_buf,
+                _group_session_buf: olm_inbound_group_session_buf,
             })
         }
     }

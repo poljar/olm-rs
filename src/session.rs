@@ -30,8 +30,7 @@ use zeroize::Zeroizing;
 #[derive(Debug, Eq)]
 pub struct OlmSession {
     pub(crate) olm_session_ptr: *mut olm_sys::OlmSession,
-    #[used]
-    olm_session_buf: Vec<u8>,
+    _olm_session_buf: Vec<u8>,
 }
 
 #[derive(Debug, Clone)]
@@ -213,7 +212,7 @@ impl OlmSession {
         } else {
             Ok(OlmSession {
                 olm_session_ptr,
-                olm_session_buf,
+                _olm_session_buf: olm_session_buf,
             })
         }
     }
