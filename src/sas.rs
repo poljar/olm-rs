@@ -38,10 +38,11 @@ use zeroize::Zeroizing;
 use crate::errors;
 use crate::errors::OlmSasError;
 use crate::getrandom;
+use crate::ByteBuf;
 
 pub struct OlmSas {
     sas_ptr: *mut olm_sys::OlmSAS,
-    _sas_buf: Vec<u8>,
+    _sas_buf: ByteBuf,
     public_key_set: bool,
 }
 
@@ -62,8 +63,8 @@ impl Default for OlmSas {
 impl OlmSas {
     pub fn new() -> Self {
         // allocate buffer for OlmAccount to be written into
-        let mut buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_sas_size() }];
-        let ptr = unsafe { olm_sys::olm_sas(buf.as_mut_ptr() as *mut _) };
+        let mut sas_buf = ByteBuf::new(unsafe { olm_sys::olm_sas_size() });
+        let ptr = unsafe { olm_sys::olm_sas(sas_buf.as_mut_void_ptr()) };
 
         let random_len = unsafe { olm_sys::olm_create_sas_random_length(ptr) };
         let mut random_buf: Zeroizing<Vec<u8>> = Zeroizing::new(vec![0; random_len]);
@@ -78,7 +79,7 @@ impl OlmSas {
 
         Self {
             sas_ptr: ptr,
-            _sas_buf: buf,
+            _sas_buf: sas_buf,
             public_key_set: false,
         }
     }

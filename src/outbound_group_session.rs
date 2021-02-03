@@ -17,7 +17,7 @@
 use crate::errors;
 use crate::errors::OlmGroupSessionError;
 use crate::getrandom;
-use crate::PicklingMode;
+use crate::{ByteBuf, PicklingMode};
 use std::ffi::CStr;
 
 use zeroize::Zeroizing;
@@ -26,7 +26,7 @@ use zeroize::Zeroizing;
 /// communication in a Megolm session.
 pub struct OlmOutboundGroupSession {
     group_session_ptr: *mut olm_sys::OlmOutboundGroupSession,
-    _group_session_buf: Vec<u8>,
+    _group_session_buf: ByteBuf,
 }
 
 impl OlmOutboundGroupSession {
@@ -39,13 +39,11 @@ impl OlmOutboundGroupSession {
     /// * `NotEnoughRandom` for `OlmOutboundGroupSession`'s creation
     ///
     pub fn new() -> Self {
-        let mut olm_outbound_group_session_buf: Vec<u8> =
-            vec![0; unsafe { olm_sys::olm_outbound_group_session_size() }];
+        let mut olm_outbound_group_session_buf =
+            ByteBuf::new(unsafe { olm_sys::olm_outbound_group_session_size() });
 
         let olm_outbound_group_session_ptr = unsafe {
-            olm_sys::olm_outbound_group_session(
-                olm_outbound_group_session_buf.as_mut_ptr() as *mut _
-            )
+            olm_sys::olm_outbound_group_session(olm_outbound_group_session_buf.as_mut_void_ptr())
         };
 
         let random_len = unsafe {
@@ -125,13 +123,11 @@ impl OlmOutboundGroupSession {
         let pickled_len = pickled.len();
         let pickled_buf = unsafe { pickled.as_bytes_mut() };
 
-        let mut olm_outbound_group_session_buf: Vec<u8> =
-            vec![0; unsafe { olm_sys::olm_outbound_group_session_size() }];
+        let mut olm_outbound_group_session_buf =
+            ByteBuf::new(unsafe { olm_sys::olm_outbound_group_session_size() });
 
         let olm_outbound_group_session_ptr = unsafe {
-            olm_sys::olm_outbound_group_session(
-                olm_outbound_group_session_buf.as_mut_ptr() as *mut _
-            )
+            olm_sys::olm_outbound_group_session(olm_outbound_group_session_buf.as_mut_void_ptr())
         };
 
         let unpickle_error = {

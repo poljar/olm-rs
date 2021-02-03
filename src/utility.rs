@@ -15,11 +15,12 @@
 //! This module wraps around all functions following the pattern `olm_utility_*`.
 
 use crate::errors::{self, OlmUtilityError};
+use crate::ByteBuf;
 use std::ffi::CStr;
 
 pub struct OlmUtility {
     olm_utility_ptr: *mut olm_sys::OlmUtility,
-    olm_utility_buf_ptr: *mut [u8],
+    _olm_utility_buf: ByteBuf,
 }
 
 /// Allows you to make use of crytographic hashing via SHA-2 and
@@ -32,14 +33,12 @@ impl OlmUtility {
     ///
     pub fn new() -> Self {
         // allocate the buffer for OlmUtility to be written into
-        let olm_utility_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_utility_size() }];
-        let olm_utility_buf_ptr = Box::into_raw(olm_utility_buf.into_boxed_slice());
-
-        let olm_utility_ptr = unsafe { olm_sys::olm_utility(olm_utility_buf_ptr as *mut _) };
+        let mut olm_utility_buf = ByteBuf::new(unsafe { olm_sys::olm_utility_size() });
+        let olm_utility_ptr = unsafe { olm_sys::olm_utility(olm_utility_buf.as_mut_void_ptr()) };
 
         Self {
             olm_utility_ptr,
-            olm_utility_buf_ptr,
+            _olm_utility_buf: olm_utility_buf,
         }
     }
 
@@ -148,7 +147,6 @@ impl Drop for OlmUtility {
     fn drop(&mut self) {
         unsafe {
             olm_sys::olm_clear_utility(self.olm_utility_ptr);
-            let _drop_utility_buf = Box::from_raw(self.olm_utility_buf_ptr);
         }
     }
 }

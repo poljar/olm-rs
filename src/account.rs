@@ -18,7 +18,7 @@ use crate::errors;
 use crate::errors::{OlmAccountError, OlmSessionError};
 use crate::getrandom;
 use crate::session::{OlmSession, PreKeyMessage};
-use crate::PicklingMode;
+use crate::{ByteBuf, PicklingMode};
 #[cfg(feature = "deserialization")]
 use std::collections::{hash_map::Iter, hash_map::Keys, hash_map::Values, HashMap};
 use std::ffi::CStr;
@@ -37,7 +37,7 @@ use zeroize::Zeroizing;
 pub struct OlmAccount {
     /// Pointer by which libolm acquires the data saved in an instance of OlmAccount
     pub(crate) olm_account_ptr: *mut olm_sys::OlmAccount,
-    _olm_account_buf: Vec<u8>,
+    _olm_account_buf: ByteBuf,
 }
 
 #[cfg(feature = "deserialization")]
@@ -145,11 +145,10 @@ impl OlmAccount {
     ///
     pub fn new() -> Self {
         // allocate buffer for OlmAccount to be written into
-        let mut olm_account_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_account_size() }];
+        let mut olm_account_buf = ByteBuf::new(unsafe { olm_sys::olm_account_size() });
 
         // let libolm populate the allocated memory
-        let olm_account_ptr =
-            unsafe { olm_sys::olm_account(olm_account_buf.as_mut_ptr() as *mut _) };
+        let olm_account_ptr = unsafe { olm_sys::olm_account(olm_account_buf.as_mut_void_ptr()) };
 
         let create_error = {
             // determine optimal length of the random buffer
@@ -240,9 +239,8 @@ impl OlmAccount {
         let pickled_len = pickled.len();
         let pickled_buf = Box::new(unsafe { pickled.as_bytes_mut() });
 
-        let mut olm_account_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_account_size() }];
-        let olm_account_ptr =
-            unsafe { olm_sys::olm_account(olm_account_buf.as_mut_ptr() as *mut _) };
+        let mut olm_account_buf = ByteBuf::new(unsafe { olm_sys::olm_account_size() });
+        let olm_account_ptr = unsafe { olm_sys::olm_account(olm_account_buf.as_mut_void_ptr()) };
 
         let unpickle_error = {
             let key = Zeroizing::new(crate::convert_pickling_mode_to_key(mode));

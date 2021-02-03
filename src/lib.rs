@@ -41,6 +41,11 @@ pub mod sas;
 pub mod session;
 pub mod utility;
 
+use std::alloc::{GlobalAlloc as _, Layout, System};
+use std::fmt;
+use std::os::raw::c_void;
+use std::ptr;
+
 use getrandom as random;
 use zeroize::Zeroizing;
 
@@ -118,5 +123,49 @@ pub fn get_library_version() -> OlmVersion {
         major,
         minor,
         patch,
+    }
+}
+
+/// Helper type that just holds a one byte aligned allocation but doesn't allow
+/// safe code to access its contents.
+///
+/// For use with the olm functions that take a buffer and return a typed pointer
+/// into the same allocation after initializing it.
+struct ByteBuf(*mut [u8]);
+
+impl ByteBuf {
+    fn new(size: usize) -> Self {
+        assert!(size != 0);
+
+        let layout = Layout::from_size_align(size, 1).unwrap();
+        let data = unsafe { System.alloc(layout) };
+        Self(ptr::slice_from_raw_parts_mut(data, size))
+    }
+
+    fn as_mut_void_ptr(&mut self) -> *mut c_void {
+        self.0 as _
+    }
+}
+
+impl fmt::Debug for ByteBuf {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<ByteBuf>")
+    }
+}
+
+impl Drop for ByteBuf {
+    fn drop(&mut self) {
+        // Should ideally use the safe <*mut [T]>::len(), but that is unstable.
+        // https://github.com/rust-lang/rust/issues/71146
+        let size = unsafe { (*self.0).len() };
+        let layout = Layout::from_size_align(size, 1).unwrap();
+
+        // Should ideally use <*mut [T]>::as_mut_ptr(), but that is unstable.
+        // https://github.com/rust-lang/rust/issues/74265
+        let data = self.0 as *mut u8;
+
+        unsafe {
+            System.dealloc(data, layout);
+        }
     }
 }
