@@ -19,7 +19,7 @@ use crate::account::OlmAccount;
 use crate::errors;
 use crate::errors::OlmSessionError;
 use crate::getrandom;
-use crate::PicklingMode;
+use crate::{ByteBuf, PicklingMode};
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::ffi::CStr;
@@ -27,10 +27,10 @@ use std::ffi::CStr;
 use zeroize::Zeroizing;
 
 /// Either an outbound or inbound session for secure communication.
-#[derive(Debug, Eq)]
+#[derive(Debug)]
 pub struct OlmSession {
     pub(crate) olm_session_ptr: *mut olm_sys::OlmSession,
-    _olm_session_buf: Vec<u8>,
+    _olm_session_buf: ByteBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -197,10 +197,9 @@ impl OlmSession {
     fn create_session_with<F: FnMut(*mut olm_sys::OlmSession) -> usize>(
         mut f: F,
     ) -> Result<OlmSession, OlmSessionError> {
-        let mut olm_session_buf: Vec<u8> = vec![0; unsafe { olm_sys::olm_session_size() }];
+        let mut olm_session_buf = ByteBuf::new(unsafe { olm_sys::olm_session_size() });
+        let olm_session_ptr = unsafe { olm_sys::olm_session(olm_session_buf.as_mut_void_ptr()) };
 
-        let olm_session_ptr =
-            unsafe { olm_sys::olm_session(olm_session_buf.as_mut_ptr() as *mut _) };
         let error = f(olm_session_ptr);
         if error == errors::olm_error() {
             let last_error = Self::last_error(olm_session_ptr);
@@ -624,6 +623,8 @@ impl PartialEq for OlmSession {
         self.session_id() == other.session_id()
     }
 }
+
+impl Eq for OlmSession {}
 
 impl Drop for OlmSession {
     fn drop(&mut self) {

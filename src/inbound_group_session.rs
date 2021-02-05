@@ -16,7 +16,7 @@
 
 use crate::errors;
 use crate::errors::OlmGroupSessionError;
-use crate::PicklingMode;
+use crate::{ByteBuf, PicklingMode};
 use std::ffi::CStr;
 
 use zeroize::Zeroizing;
@@ -25,7 +25,7 @@ use zeroize::Zeroizing;
 /// communication in a Megolm session.
 pub struct OlmInboundGroupSession {
     group_session_ptr: *mut olm_sys::OlmInboundGroupSession,
-    _group_session_buf: Vec<u8>,
+    _group_session_buf: ByteBuf,
 }
 
 impl OlmInboundGroupSession {
@@ -39,11 +39,11 @@ impl OlmInboundGroupSession {
     /// * `BadSessionKey` if session key is invalid
     ///
     pub fn new(key: &str) -> Result<Self, OlmGroupSessionError> {
-        let mut olm_inbound_group_session_buf: Vec<u8> =
-            vec![0; unsafe { olm_sys::olm_inbound_group_session_size() }];
+        let mut olm_inbound_group_session_buf =
+            ByteBuf::new(unsafe { olm_sys::olm_inbound_group_session_size() });
 
         let olm_inbound_group_session_ptr = unsafe {
-            olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf.as_mut_ptr() as *mut _)
+            olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf.as_mut_void_ptr())
         };
         let key_buf = key.as_bytes();
 
@@ -75,11 +75,11 @@ impl OlmInboundGroupSession {
     /// * `BadSessionKey` if session key is invalid
     ///
     pub fn import(key: &str) -> Result<Self, OlmGroupSessionError> {
-        let mut olm_inbound_group_session_buf: Vec<u8> =
-            vec![0; unsafe { olm_sys::olm_inbound_group_session_size() }];
+        let mut olm_inbound_group_session_buf =
+            ByteBuf::new(unsafe { olm_sys::olm_inbound_group_session_size() });
 
         let olm_inbound_group_session_ptr = unsafe {
-            olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf.as_mut_ptr() as *mut _)
+            olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf.as_mut_void_ptr())
         };
 
         let key_buf = key.as_bytes();
@@ -155,11 +155,11 @@ impl OlmInboundGroupSession {
         let pickled_len = pickled.len();
         let pickled_buf = unsafe { pickled.as_bytes_mut() };
 
-        let mut olm_inbound_group_session_buf: Vec<u8> =
-            vec![0; unsafe { olm_sys::olm_inbound_group_session_size() }];
+        let mut olm_inbound_group_session_buf =
+            ByteBuf::new(unsafe { olm_sys::olm_inbound_group_session_size() });
 
         let olm_inbound_group_session_ptr = unsafe {
-            olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf.as_mut_ptr() as *mut _)
+            olm_sys::olm_inbound_group_session(olm_inbound_group_session_buf.as_mut_void_ptr())
         };
 
         let unpickle_error = {
