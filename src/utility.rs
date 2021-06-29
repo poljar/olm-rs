@@ -112,7 +112,7 @@ impl OlmUtility {
         &self,
         key: &str,
         message: &str,
-        signature: &str,
+        signature: String,
     ) -> Result<bool, OlmUtilityError> {
         let ed25519_verify_error = unsafe {
             olm_sys::olm_ed25519_verify(

@@ -38,7 +38,7 @@ fn group_session_crypto_valid() {
 
     assert_eq!(ogs.session_id(), igs.session_id());
 
-    let plaintext = String::from("Hello world!");
+    let plaintext = "Hello world!";
     let ciphertext = ogs.encrypt(plaintext);
     // ciphertext valid base64?
     base64::decode(&ciphertext).unwrap();

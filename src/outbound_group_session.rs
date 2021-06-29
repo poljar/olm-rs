@@ -182,10 +182,10 @@ impl OlmOutboundGroupSession {
     /// * `OutputBufferTooSmall` for encrypted message
     /// * on malformed UTF-8 coding of the ciphertext provided by libolm
     ///
-    pub fn encrypt(&self, mut plaintext: String) -> String {
-        let plaintext_buf = unsafe { plaintext.as_bytes_mut() };
+    pub fn encrypt(&self, plaintext: &str) -> String {
+        let plaintext_buf = plaintext.as_bytes();
         let plaintext_len = plaintext_buf.len();
-        let plaintext_ptr = plaintext_buf.as_mut_ptr() as *mut _;
+        let plaintext_ptr = plaintext_buf.as_ptr() as *const _;
         let message_max_len = unsafe {
             olm_sys::olm_group_encrypt_message_length(self.group_session_ptr, plaintext_len)
         };

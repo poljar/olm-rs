@@ -16,8 +16,7 @@
 //! as well as functions for encryption and decryption using the Double Ratchet algorithm.
 
 use crate::account::OlmAccount;
-use crate::errors;
-use crate::errors::OlmSessionError;
+use crate::errors::{self, OlmSessionError};
 use crate::getrandom;
 use crate::{ByteBuf, PicklingMode};
 use std::cmp::Ordering;
@@ -651,7 +650,7 @@ mod test {
             .parsed_one_time_keys()
             .curve25519()
             .values()
-            .nth(0)
+            .next()
             .unwrap()
             .to_owned();
 
