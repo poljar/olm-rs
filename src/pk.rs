@@ -18,9 +18,8 @@ use std::ffi::CStr;
 
 use zeroize::Zeroizing;
 
-use crate::errors;
-use crate::errors::{OlmPkDecryptionError, OlmPkEncryptionError, OlmPkSigningError};
-use crate::{getrandom, PicklingMode};
+use crate::errors::{self, OlmPkDecryptionError, OlmPkEncryptionError, OlmPkSigningError};
+use crate::{getrandom, ByteBuf, PicklingMode};
 
 /// A PK encrypted message.
 pub struct PkMessage {
@@ -52,7 +51,7 @@ impl PkMessage {
 /// The encryption part of a PK encrypted channel.
 pub struct OlmPkEncryption {
     ptr: *mut olm_sys::OlmPkEncryption,
-    _buf: Vec<u8>,
+    _buf: ByteBuf,
 }
 
 impl Drop for OlmPkEncryption {
@@ -79,11 +78,9 @@ impl OlmPkEncryption {
     pub fn new(recipient_key: String) -> Self {
         let recipient_key = Zeroizing::from(recipient_key);
 
-        let size = unsafe { olm_sys::olm_pk_encryption_size() };
+        let mut buf = ByteBuf::new(unsafe { olm_sys::olm_pk_encryption_size() });
 
-        let mut buf = vec![0; size];
-
-        let ptr = unsafe { olm_sys::olm_pk_encryption(buf.as_mut_ptr() as *mut _) };
+        let ptr = unsafe { olm_sys::olm_pk_encryption(buf.as_mut_void_ptr()) };
 
         unsafe {
             olm_sys::olm_pk_encryption_set_recipient_key(
@@ -170,7 +167,7 @@ impl OlmPkEncryption {
 /// The decryption part of a PK encrypted channel.
 pub struct OlmPkDecryption {
     ptr: *mut olm_sys::OlmPkDecryption,
-    _buf: Vec<u8>,
+    _buf: ByteBuf,
     public_key: String,
 }
 
@@ -227,10 +224,9 @@ impl OlmPkDecryption {
         }
     }
 
-    fn init() -> (*mut olm_sys::OlmPkDecryption, Vec<u8>) {
-        let size = unsafe { olm_sys::olm_pk_decryption_size() };
-        let mut buf = vec![0; size];
-        let ptr = unsafe { olm_sys::olm_pk_decryption(buf.as_mut_ptr() as *mut _) };
+    fn init() -> (*mut olm_sys::OlmPkDecryption, ByteBuf) {
+        let mut buf = ByteBuf::new(unsafe { olm_sys::olm_pk_decryption_size() });
+        let ptr = unsafe { olm_sys::olm_pk_decryption(buf.as_mut_void_ptr() as *mut _) };
 
         (ptr, buf)
     }
@@ -405,7 +401,7 @@ impl OlmPkDecryption {
 /// Signs messages using public key cryptography.
 pub struct OlmPkSigning {
     ptr: *mut olm_sys::OlmPkSigning,
-    _buf: Vec<u8>,
+    _buf: ByteBuf,
     public_key: String,
 }
 
@@ -429,10 +425,9 @@ impl OlmPkSigning {
             return Err(OlmPkSigningError::InvalidSeed);
         }
 
-        let length = unsafe { olm_sys::olm_pk_signing_size() };
-        let mut buffer = vec![0; length];
+        let mut buffer = ByteBuf::new(unsafe { olm_sys::olm_pk_signing_size() });
 
-        let ptr = unsafe { olm_sys::olm_pk_signing(buffer.as_mut_ptr() as *mut _) };
+        let ptr = unsafe { olm_sys::olm_pk_signing(buffer.as_mut_void_ptr() as *mut _) };
         let pubkey_length = unsafe { olm_sys::olm_pk_signing_public_key_length() };
         let mut pubkey_buffer = vec![0; pubkey_length];
 
