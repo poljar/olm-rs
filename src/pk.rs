@@ -42,9 +42,9 @@ impl PkMessage {
     /// * `ciphertext` - The cipher text of the encrypted message
     pub fn new(ephemeral_key: String, mac: String, ciphertext: String) -> Self {
         PkMessage {
-            ephemeral_key,
-            mac,
             ciphertext,
+            mac,
+            ephemeral_key,
         }
     }
 }
