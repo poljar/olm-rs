@@ -22,6 +22,7 @@ use crate::{ByteBuf, PicklingMode};
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::ffi::CStr;
+use std::fmt;
 
 use zeroize::Zeroizing;
 
@@ -65,6 +66,17 @@ pub enum OlmMessage {
     PreKey(PreKeyMessage),
 }
 
+#[derive(Debug)]
+pub struct UnknownOlmMessageType;
+
+impl fmt::Display for UnknownOlmMessageType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Unknown message type")
+    }
+}
+
+impl std::error::Error for UnknownOlmMessageType {}
+
 impl OlmMessage {
     /// Create an OlmMessage from a message type and the ciphertext.
     ///
@@ -73,13 +85,16 @@ impl OlmMessage {
     /// 1 for a normal one.
     ///
     /// * `ciphertext` - The encrypted ciphertext of the message.
-    pub fn from_type_and_ciphertext(message_type: usize, ciphertext: String) -> Result<Self, ()> {
+    pub fn from_type_and_ciphertext(
+        message_type: usize,
+        ciphertext: String,
+    ) -> Result<Self, UnknownOlmMessageType> {
         match message_type {
             olm_sys::OLM_MESSAGE_TYPE_PRE_KEY => {
                 Ok(OlmMessage::PreKey(PreKeyMessage::new(ciphertext)))
             }
             olm_sys::OLM_MESSAGE_TYPE_MESSAGE => Ok(OlmMessage::Message(Message::new(ciphertext))),
-            _ => Err(()),
+            _ => Err(UnknownOlmMessageType),
         }
     }
 
