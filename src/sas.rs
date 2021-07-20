@@ -35,8 +35,7 @@ use std::ffi::CStr;
 
 use zeroize::Zeroizing;
 
-use crate::errors;
-use crate::errors::OlmSasError;
+use crate::errors::{self, OlmSasError};
 use crate::getrandom;
 use crate::ByteBuf;
 
@@ -267,20 +266,20 @@ mod test {
         let mut alice = OlmSas::new();
         let mut bob = OlmSas::new();
 
-        let message = "It's a secret to everyone";
+        let message = "It's a secret to everyone".to_string();
 
-        assert!(alice.calculate_mac(message, "").is_err());
+        assert!(alice.calculate_mac(&message, "").is_err());
 
         assert!(alice.set_their_public_key(bob.public_key()).is_ok());
         assert!(bob.set_their_public_key(alice.public_key()).is_ok());
 
         assert_eq!(
-            alice.calculate_mac(message, "").unwrap(),
-            bob.calculate_mac(message, "").unwrap()
+            alice.calculate_mac(&message, "").unwrap(),
+            bob.calculate_mac(&message, "").unwrap()
         );
         assert_ne!(
             alice.calculate_mac("fake", "").unwrap(),
-            bob.calculate_mac(message, "").unwrap()
+            bob.calculate_mac(&message, "").unwrap()
         );
     }
 }

@@ -14,8 +14,7 @@
 
 //! This module wraps around all functions following the pattern `olm_account_*`.
 
-use crate::errors;
-use crate::errors::{OlmAccountError, OlmSessionError};
+use crate::errors::{self, OlmAccountError, OlmSessionError};
 use crate::getrandom;
 use crate::session::{OlmSession, PreKeyMessage};
 use crate::{ByteBuf, PicklingMode};

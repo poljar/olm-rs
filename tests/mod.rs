@@ -43,13 +43,10 @@ fn operational_rng() {
 
 #[test]
 fn sha256_valid() {
-    let mut test_str = String::from("Hello, World!");
     let util = OlmUtility::new();
-    let mut test_str_same = String::from("Hello, World!");
-    let test_str_bytes = unsafe { test_str_same.as_bytes_mut() };
 
     assert_eq!(
-        util.sha256_utf8_msg(&mut test_str),
-        util.sha256_bytes(test_str_bytes)
+        util.sha256_utf8_msg("Hello, World!"),
+        util.sha256_bytes("Hello, World!".as_bytes())
     )
 }

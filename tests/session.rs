@@ -11,10 +11,10 @@ fn create_session_pair() -> (OlmSession, OlmSession) {
     let account_b = OlmAccount::unpickle(pickled_account_b, PicklingMode::Unencrypted).unwrap();
     let _identity_key_a = String::from("qIEr3TWcJQt4CP8QoKKJcCaukByIOpgh6erBkhLEa2o");
     let _one_time_key_a = String::from("WzsbsjD85iB1R32iWxfJdwkgmdz29ClMbJSJziECYwk");
-    let identity_key_b = String::from("q/YhJtog/5VHCAS9rM9uUf6AaFk1yPe4GYuyUOXyQCg");
-    let one_time_key_b = String::from("oWvzryma+B2onYjo3hM6A3Mgo/Yepm8HvgSvwZMTnjQ");
+    let identity_key_b = "q/YhJtog/5VHCAS9rM9uUf6AaFk1yPe4GYuyUOXyQCg";
+    let one_time_key_b = "oWvzryma+B2onYjo3hM6A3Mgo/Yepm8HvgSvwZMTnjQ";
     let outbound = account_a
-        .create_outbound_session(&identity_key_b, &one_time_key_b)
+        .create_outbound_session(identity_key_b, one_time_key_b)
         .unwrap();
     let pre_key = outbound.encrypt(""); // Payload does not matter for PreKey
 
@@ -60,10 +60,7 @@ fn correct_session_ordering() {
     let session_2_id = session_2.session_id();
     let session_3_id = session_3.session_id();
 
-    let mut session_list: Vec<OlmSession> = Vec::new();
-    session_list.push(session_1);
-    session_list.push(session_2);
-    session_list.push(session_3);
+    let mut session_list: Vec<OlmSession> = vec![session_1, session_2, session_3];
 
     session_list.sort_unstable();
     assert_eq!(session_list.get(0).unwrap().session_id(), session_2_id);

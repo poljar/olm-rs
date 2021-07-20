@@ -18,15 +18,15 @@ fn identity_keys_valid() {
 fn signatures_valid() {
     // test signature being valid base64
     let olm_account = OlmAccount::new();
-    let message = "Hello world!";
-    let signature = olm_account.sign(message);
+    let message = "Hello world!".to_string();
+    let signature = olm_account.sign(&message);
     base64::decode(&signature).unwrap();
 
     let utility = OlmUtility::new();
     let identity_keys = olm_account.parsed_identity_keys();
     let ed25519_key = identity_keys.ed25519();
     assert!(utility
-        .ed25519_verify(&ed25519_key, message, &signature)
+        .ed25519_verify(ed25519_key, &message, signature)
         .unwrap());
 }
 
@@ -67,8 +67,8 @@ fn remove_one_time_keys() {
     let identity_keys = account_b.parsed_identity_keys();
     let session = account_a
         .create_outbound_session(
-            &identity_keys.curve25519(),
-            otks.curve25519().values().nth(0).unwrap(),
+            identity_keys.curve25519(),
+            otks.curve25519().values().next().unwrap(),
         )
         .unwrap();
 
@@ -93,7 +93,7 @@ fn remove_one_time_keys_fails() {
     let otks = account_b.parsed_one_time_keys();
     let identity_keys = account_b.parsed_identity_keys();
     let session = account_a
-        .create_outbound_session(&identity_keys.curve25519(), &otks.curve25519()["AAAAAQ"])
+        .create_outbound_session(identity_keys.curve25519(), &otks.curve25519()["AAAAAQ"])
         .unwrap();
 
     assert_eq!(1, otks.curve25519().len());
