@@ -22,6 +22,11 @@
 //! Random number generation is also handled internally and hence there are no
 //! function arguments for supplying random data.
 //!
+//! String arguments will vary in ownership requirements when being provided as a
+//! function argument. This is because `libolm` will sometimes mutate this data and
+//! sometimes won't. To avoid breaking the ownership model, full ownership is required
+//! for the former case.
+//!
 //! All errors of the type `NOT_ENOUGH_RANDOM` and `OUTPUT_BUFFER_TOO_SMALL` from
 //! `libolm` that are encountered result in a panic, as they are unrecoverably fatal.
 //! Similarly the output from `libolm` is assumed to be trusted, except for encryption
@@ -49,7 +54,7 @@ use std::ptr;
 use getrandom as random;
 use zeroize::Zeroizing;
 
-/// A getrandom wrapper that panics if the call is unsuccessful.
+/// A [`mod@getrandom`] wrapper that panics if the call is unsuccessful.
 ///
 /// # Arguments
 ///

@@ -40,7 +40,7 @@ pub struct OlmAccount {
 }
 
 #[cfg(feature = "deserialization")]
-/// Struct representing the parsed result of `OlmAccount::identity_keys()`.
+/// Struct representing the parsed result of [`OlmAccount::identity_keys()`].
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct IdentityKeys {
     #[serde(flatten)]
@@ -174,7 +174,7 @@ impl OlmAccount {
         }
     }
 
-    /// Serialises an `OlmAccount` to encrypted Base64.
+    /// Serialises an [`OlmAccount`] to encrypted Base64.
     ///
     /// # C-API equivalent
     /// `olm_pickle_account`
@@ -225,7 +225,7 @@ impl OlmAccount {
         pickled_result
     }
 
-    /// Deserialises from encrypted Base64 that was previously obtained by pickling an `OlmAccount`.
+    /// Deserialises from encrypted Base64 that was previously obtained by pickling an [`OlmAccount`].
     ///
     /// # C-API equivalent
     /// `olm_unpickle_account`

@@ -29,7 +29,7 @@ pub struct OlmInboundGroupSession {
 }
 
 impl OlmInboundGroupSession {
-    /// Creates a new instance of `OlmInboundGroupSession`.
+    /// Creates a new instance of [`OlmInboundGroupSession`].
     ///
     /// # C-API equivalent
     /// `olm_init_inbound_group_session`
@@ -103,7 +103,7 @@ impl OlmInboundGroupSession {
         }
     }
 
-    /// Serialises an `OlmInboundGroupSession` to encrypted Base64.
+    /// Serialises an [`OlmInboundGroupSession`] to encrypted Base64.
     ///
     /// # C-API equivalent
     /// `olm_pickle_inbound_group_session`
@@ -142,7 +142,7 @@ impl OlmInboundGroupSession {
         pickled_result
     }
 
-    /// Deserialises from encrypted Base64 that was previously obtained by pickling an `OlmInboundGroupSession`.
+    /// Deserialises from encrypted Base64 that was previously obtained by pickling an [`OlmInboundGroupSession`].
     ///
     /// # C-API equivalent
     /// `olm_unpickle_inbound_group_session`
@@ -186,7 +186,7 @@ impl OlmInboundGroupSession {
         }
     }
 
-    /// Returns the last error that occurred for an `OlmInboundSession`.
+    /// Returns the last error that occurred for an [`OlmInboundGroupSession`].
     /// Since error codes are encoded as CStrings by libolm,
     /// OlmGroupSessionError::Unknown is returned on an unknown error code.
     fn last_error(

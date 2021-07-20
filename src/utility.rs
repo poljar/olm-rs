@@ -93,7 +93,7 @@ impl OlmUtility {
     }
 
     /// Convenience function that converts the UTF-8 message
-    /// to bytes and then calls `sha256_bytes()`, returning its output.
+    /// to bytes and then calls [`sha256_bytes()`](Self::sha256_bytes()), returning its output.
     pub fn sha256_utf8_msg(&self, msg: &str) -> String {
         self.sha256_bytes(msg.as_bytes())
     }

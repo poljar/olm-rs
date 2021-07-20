@@ -54,7 +54,8 @@ static BUFFER_SMALL: &str = "Supplied output buffer is too small";
 static INPUT_BUFFER_SMALL: &str = "Supplied input buffer is too small";
 static UNKNOWN: &str = "An unknown error occured.";
 
-/// All errors that could be caused by an operation regarding an `OlmAccount`.
+/// All errors that could be caused by an operation regarding an
+/// [`OlmAccount`](crate::account::OlmAccount).
 /// Errors are named exactly like the ones in libolm.
 #[derive(Debug, PartialEq)]
 pub enum OlmAccountError {
@@ -84,7 +85,7 @@ impl Error for OlmAccountError {}
 impl Error for OlmSessionError {}
 impl Error for OlmGroupSessionError {}
 
-/// All errors that could be caused by an operation regarding `OlmUitlity`.
+/// All errors that could be caused by an operation regarding [`OlmUitlity`](crate::utility::OlmUtility).
 /// Errors are named exactly like the ones in libolm.
 #[derive(Debug, PartialEq)]
 pub enum OlmUtilityError {
@@ -94,7 +95,7 @@ pub enum OlmUtilityError {
     Unknown,
 }
 
-/// All errors that could be caused by an operation regarding an `OlmSession`.
+/// All errors that could be caused by an operation regarding an [`OlmSession`](crate::session::OlmSession).
 /// Errors are named exactly like the ones in libolm.
 #[derive(Debug, PartialEq)]
 pub enum OlmSessionError {
@@ -127,7 +128,8 @@ impl fmt::Display for OlmSessionError {
 }
 
 /// All errors that could be caused by an operation regarding
-/// `OlmOutboundGroupSession` and `OlmInboundGroupSession`.
+/// [`OlmOutboundGroupSession`](crate::outbound_group_session::OlmOutboundGroupSession) and
+/// [`OlmInboundGroupSession`](crate::inbound_group_session::OlmInboundGroupSession).
 /// Errors are named exactly like the ones in libolm.
 #[derive(Debug, PartialEq)]
 pub enum OlmGroupSessionError {
@@ -162,7 +164,7 @@ impl fmt::Display for OlmGroupSessionError {
 }
 
 /// All errors that could be caused by an operation regarding
-/// `OlmSas`.
+/// [`OlmSas`](crate::sas::OlmSas).
 /// Errors are named exactly like the ones in libolm.
 #[derive(Debug, PartialEq)]
 pub enum OlmSasError {
@@ -189,7 +191,7 @@ impl fmt::Display for OlmSasError {
 }
 
 /// All errors that could be caused by an operation regarding
-/// `OlmPkSigning`.
+/// [`OlmPkSigning`](crate::pk::OlmPkSigning).
 /// Errors are named exactly like the ones in libolm.
 #[derive(Debug, PartialEq)]
 pub enum OlmPkSigningError {
@@ -222,7 +224,7 @@ impl From<&str> for OlmPkSigningError {
 }
 
 /// All errors that could be caused by an operation regarding
-/// `OlmPkEncryption`.
+/// [`OlmPkEncryption`](crate::pk::OlmPkEncryption).
 /// Errors are named exactly like the ones in libolm.
 #[derive(Debug, PartialEq)]
 pub enum OlmPkEncryptionError {
@@ -253,7 +255,7 @@ impl From<&str> for OlmPkEncryptionError {
 }
 
 /// All errors that could be caused by an operation regarding
-/// `OlmPkDecryption`.
+/// [`OlmPkDecryption`](crate::pk::OlmPkDecryption).
 /// Errors are named exactly like the ones in libolm.
 #[derive(Debug, PartialEq)]
 pub enum OlmPkDecryptionError {

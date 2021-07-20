@@ -230,7 +230,7 @@ impl OlmSession {
         }
     }
 
-    /// Gives you the last error encountered by the `OlmSession` given as an argument.
+    /// Gives you the last error encountered by the [`OlmSession`] given as an argument.
     fn last_error(session_ptr: *mut olm_sys::OlmSession) -> OlmSessionError {
         // get CString error code and convert to String
         let error_raw = unsafe { olm_sys::olm_session_last_error(session_ptr) };
@@ -279,7 +279,7 @@ impl OlmSession {
         session_id_result
     }
 
-    /// Serialises an `OlmSession` to encrypted base64.
+    /// Serialises an [`OlmSession`] to encrypted base64.
     ///
     /// # C-API equivalent
     /// `olm_pickle_session`
@@ -315,7 +315,7 @@ impl OlmSession {
         pickled_result
     }
 
-    /// Deserialises from encrypted base64 that was previously obtained by pickling an `OlmSession`.
+    /// Deserialises from encrypted base64 that was previously obtained by pickling an [`OlmSession`].
     ///
     /// # C-API equivalent
     /// `olm_unpickle_session`

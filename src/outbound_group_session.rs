@@ -30,13 +30,13 @@ pub struct OlmOutboundGroupSession {
 }
 
 impl OlmOutboundGroupSession {
-    /// Creates a new instance of `OlmOutboundGroupSession`.
+    /// Creates a new instance of [`OlmOutboundGroupSession`].
     ///
     /// # C-API equivalent
     /// `olm_init_outbound_group_session`
     ///
     /// # Panics
-    /// * `NotEnoughRandom` for `OlmOutboundGroupSession`'s creation
+    /// * `NotEnoughRandom` for creation
     ///
     pub fn new() -> Self {
         let mut olm_outbound_group_session_buf =
@@ -73,13 +73,13 @@ impl OlmOutboundGroupSession {
         }
     }
 
-    /// Serialises an `OlmOutboundGroupSession` to encrypted Base64.
+    /// Serialises an [`OlmOutboundGroupSession`] to encrypted Base64.
     ///
     /// # C-API equivalent
     /// `olm_pickle_outbound_group_session`
     ///
     /// # Panics
-    /// * `OutputBufferTooSmall` for `OlmOutboundGroupSession`'s pickled buffer
+    /// * `OutputBufferTooSmall` for pickled buffer
     /// * on malformed UTF-8 coding of the pickling provided by libolm
     ///
     pub fn pickle(&self, mode: PicklingMode) -> String {
@@ -110,7 +110,7 @@ impl OlmOutboundGroupSession {
         pickled_result
     }
 
-    /// Deserialises from encrypted Base64 that was previously obtained by pickling an `OlmOutboundGroupSession`.
+    /// Deserialises from encrypted Base64 that was previously obtained by pickling an [`OlmOutboundGroupSession`].
     ///
     /// # C-API equivalent
     /// `olm_unpickle_outbound_group_session`
@@ -154,7 +154,7 @@ impl OlmOutboundGroupSession {
         }
     }
 
-    /// Returns the last error that occurred for an `OlmOutboundSession`.
+    /// Returns the last error that occurred for an [`OlmOutboundGroupSession`].
     /// Since error codes are encoded as CStrings by libolm,
     /// OlmGroupSessionError::Unknown is returned on an unknown error code.
     fn last_error(
