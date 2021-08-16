@@ -240,12 +240,14 @@ impl OlmInboundGroupSession {
         let message_len = message_buf.len();
         let message_ptr = message_buf.as_mut_ptr() as *mut _;
 
-        let max_plaintext_length = unsafe {
-            let ret = olm_sys::olm_group_decrypt_max_plaintext_length(
-                self.group_session_ptr,
-                message_ptr,
-                message_len,
-            );
+        let max_plaintext_length = {
+            let ret = unsafe {
+                olm_sys::olm_group_decrypt_max_plaintext_length(
+                    self.group_session_ptr,
+                    message_ptr,
+                    message_len,
+                )
+            };
 
             if ret == errors::olm_error() {
                 return Err(OlmGroupSessionError::InvalidBase64);
