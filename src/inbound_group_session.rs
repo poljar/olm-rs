@@ -19,7 +19,6 @@ use crate::errors::OlmGroupSessionError;
 use crate::{ByteBuf, PicklingMode};
 use std::ffi::CStr;
 
-use olm_sys::olm_error;
 use zeroize::Zeroizing;
 
 /// An in-bound group session is responsible for decrypting incoming
@@ -248,7 +247,7 @@ impl OlmInboundGroupSession {
                 message_len,
             );
 
-            if ret == olm_error() {
+            if ret == errors::olm_error() {
                 return Err(OlmGroupSessionError::InvalidBase64);
             }
 
