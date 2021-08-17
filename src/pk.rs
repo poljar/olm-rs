@@ -359,8 +359,16 @@ impl OlmPkDecryption {
     /// * `OutputBufferTooSmall` on plaintext output buffer
     ///
     pub fn decrypt(&self, mut message: PkMessage) -> Result<String, OlmPkDecryptionError> {
-        let max_plaintext =
-            unsafe { olm_sys::olm_pk_max_plaintext_length(self.ptr, message.ciphertext.len()) };
+        let max_plaintext = {
+            let ret =
+                unsafe { olm_sys::olm_pk_max_plaintext_length(self.ptr, message.ciphertext.len()) };
+
+            if ret == errors::olm_error() {
+                return Err(OlmPkDecryptionError::InvalidBase64);
+            }
+
+            ret
+        };
 
         let mut plaintext = vec![0; max_plaintext];
 
@@ -534,7 +542,8 @@ impl OlmPkSigning {
 
 #[cfg(test)]
 mod test {
-    use crate::pk::{OlmPkDecryption, OlmPkEncryption, OlmPkSigning};
+    use crate::errors::OlmPkDecryptionError;
+    use crate::pk::{OlmPkDecryption, OlmPkEncryption, OlmPkSigning, PkMessage};
     use crate::utility::OlmUtility;
     use crate::PicklingMode;
 
@@ -622,5 +631,20 @@ mod test {
 
         let encrypted_message = malory.encrypt("It's a secret to everyone");
         assert!(alice.decrypt(encrypted_message).is_err());
+    }
+
+    #[test]
+    fn attempt_decrypt_invalid_base64() {
+        let decryption = OlmPkDecryption::new();
+        let message = PkMessage {
+            ciphertext: "1".to_string(),
+            mac: "".to_string(),
+            ephemeral_key: "".to_string(),
+        };
+
+        assert_eq!(
+            Err(OlmPkDecryptionError::InvalidBase64),
+            decryption.decrypt(message)
+        );
     }
 }
