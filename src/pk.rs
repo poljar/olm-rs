@@ -359,8 +359,16 @@ impl OlmPkDecryption {
     /// * `OutputBufferTooSmall` on plaintext output buffer
     ///
     pub fn decrypt(&self, mut message: PkMessage) -> Result<String, OlmPkDecryptionError> {
-        let max_plaintext =
-            unsafe { olm_sys::olm_pk_max_plaintext_length(self.ptr, message.ciphertext.len()) };
+        let max_plaintext = {
+            let ret =
+                unsafe { olm_sys::olm_pk_max_plaintext_length(self.ptr, message.ciphertext.len()) };
+
+            if ret == errors::olm_error() {
+                return Err(OlmPkDecryptionError::InvalidBase64);
+            }
+
+            ret
+        };
 
         let mut plaintext = vec![0; max_plaintext];
 
