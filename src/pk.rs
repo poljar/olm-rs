@@ -542,7 +542,8 @@ impl OlmPkSigning {
 
 #[cfg(test)]
 mod test {
-    use crate::pk::{OlmPkDecryption, OlmPkEncryption, OlmPkSigning};
+    use crate::errors::OlmPkDecryptionError;
+    use crate::pk::{OlmPkDecryption, OlmPkEncryption, OlmPkSigning, PkMessage};
     use crate::utility::OlmUtility;
     use crate::PicklingMode;
 
@@ -630,5 +631,20 @@ mod test {
 
         let encrypted_message = malory.encrypt("It's a secret to everyone");
         assert!(alice.decrypt(encrypted_message).is_err());
+    }
+
+    #[test]
+    fn attempt_decrypt_invalid_base64() {
+        let decryption = OlmPkDecryption::new();
+        let message = PkMessage {
+            ciphertext: "1".to_string(),
+            mac: "".to_string(),
+            ephemeral_key: "".to_string(),
+        };
+
+        assert_eq!(
+            Err(OlmPkDecryptionError::InvalidBase64),
+            decryption.decrypt(message)
+        );
     }
 }
