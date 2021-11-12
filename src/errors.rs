@@ -84,6 +84,8 @@ impl fmt::Display for OlmAccountError {
 impl Error for OlmAccountError {}
 impl Error for OlmSessionError {}
 impl Error for OlmGroupSessionError {}
+impl Error for OlmPkDecryptionError {}
+impl Error for OlmPkSigningError {}
 
 /// All errors that could be caused by an operation regarding [`OlmUitlity`](crate::utility::OlmUtility).
 /// Errors are named exactly like the ones in libolm.
