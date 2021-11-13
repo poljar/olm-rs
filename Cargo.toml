@@ -1,6 +1,6 @@
 [package]
 name = "olm-rs"
-version = "2.0.1"
+version = "2.1.0"
 authors = ["Johannes Hayeß <jhaye@mailbox.org>"]
 
 description = "A Rust wrapper for libolm."
