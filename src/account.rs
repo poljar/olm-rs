@@ -577,9 +577,7 @@ impl OlmAccount {
         }
 
         // String is constructed from the fallback key buffer and memory is freed after exiting the scope.
-        let fallback_result = String::from_utf8(fallback_buf).unwrap();
-
-        fallback_result
+        String::from_utf8(fallback_buf).unwrap()
     }
 
     #[cfg(feature = "deserialization")]
