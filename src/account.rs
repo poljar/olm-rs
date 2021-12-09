@@ -18,12 +18,15 @@ use crate::errors::{self, OlmAccountError, OlmSessionError};
 use crate::getrandom;
 use crate::session::{OlmSession, PreKeyMessage};
 use crate::{ByteBuf, PicklingMode};
+
 #[cfg(feature = "deserialization")]
 use std::collections::{hash_map::Iter, hash_map::Keys, hash_map::Values, HashMap};
 use std::ffi::CStr;
 
 #[cfg(feature = "deserialization")]
 use serde::Deserialize;
+#[cfg(feature = "deserialization")]
+use serde_json::Value;
 use zeroize::Zeroizing;
 
 /// An olm account manages all cryptographic keys used on a device.
@@ -83,6 +86,27 @@ impl IdentityKeys {
     /// Returns true if the account contains a key with the given key type.
     pub fn contains_key(&self, key_type: &str) -> bool {
         self.keys.contains_key(key_type)
+    }
+}
+
+#[cfg(feature = "deserialization")]
+/// Struct representing the parsed result of [`OlmAccount::fallback_key()`].
+#[derive(Deserialize, Debug, PartialEq)]
+pub struct FallbackKey {
+    index: String,
+    key: String,
+}
+
+#[cfg(feature = "deserialization")]
+impl FallbackKey {
+    /// Get the public part of this fallback key.
+    pub fn curve25519(&self) -> &str {
+        &self.key
+    }
+
+    /// Get the index associated with this fallback key.
+    pub fn index(&self) -> &str {
+        &self.index
     }
 }
 
@@ -478,6 +502,106 @@ impl OlmAccount {
         }
     }
 
+    /// Generates a new fallback key. Only one previous fallback key is stored.
+    ///
+    /// # C-API equivalent
+    /// `olm_account_generate_fallback_key`
+    ///
+    /// # Panics
+    /// * `NOT_ENOUGH_RANDOM`
+    ///
+    pub fn generate_fallback_key(&self) {
+        // determine optimal length of the random buffer
+        let random_len = unsafe {
+            olm_sys::olm_account_generate_fallback_key_random_length(self.olm_account_ptr)
+        };
+        let mut random_buf: Zeroizing<Vec<u8>> = Zeroizing::new(vec![0; random_len]);
+        getrandom(&mut random_buf);
+
+        // write keys data in the keys buffer
+        let fallback_key_error = unsafe {
+            olm_sys::olm_account_generate_fallback_key(
+                self.olm_account_ptr,
+                random_buf.as_mut_ptr() as *mut _,
+                random_len,
+            )
+        };
+
+        if fallback_key_error == errors::olm_error() {
+            errors::handle_fatal_error(Self::last_error(self.olm_account_ptr));
+        }
+    }
+
+    /// Output fallback key of this account in JSON format.
+    ///
+    /// This is what the output looks like before generating an
+    /// initial fallback key:
+    /// ```json
+    /// {
+    ///     "curve25519": {}
+    /// }
+    /// ```
+    ///
+    /// And after:
+    /// ```json
+    /// {
+    ///     "curve25519": {
+    ///         "AAAAAQ": "u4XQpRre6j7peD4clRq9d56kRbwnVEAsavIiZHHZekY"
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// # C-API equivalent
+    /// `olm_account_one_time_key`
+    ///
+    /// # Panics
+    /// * `OUTPUT_BUFFER_TOO_SMALL`
+    ///
+    pub fn fallback_key(&self) -> String {
+        // get buffer length of fallback keys
+        let fallback_len =
+            unsafe { olm_sys::olm_account_unpublished_fallback_key_length(self.olm_account_ptr) };
+        let mut fallback_buf: Vec<u8> = vec![0; fallback_len];
+
+        // write fallbacks key data in the fallback key buffer
+        let fallback_error = unsafe {
+            olm_sys::olm_account_unpublished_fallback_key(
+                self.olm_account_ptr,
+                fallback_buf.as_mut_ptr() as *mut _,
+                fallback_len,
+            )
+        };
+
+        if fallback_error == errors::olm_error() {
+            errors::handle_fatal_error(Self::last_error(self.olm_account_ptr));
+        }
+
+        // String is constructed from the fallback key buffer and memory is freed after exiting the scope.
+        let fallback_result = String::from_utf8(fallback_buf).unwrap();
+
+        fallback_result
+    }
+
+    #[cfg(feature = "deserialization")]
+    /// Returns the account's fallback key. `None` if no fallback key has been generated yet.
+    pub fn parsed_fallback_key(&self) -> Option<FallbackKey> {
+        let parsed_fallback: Value =
+            serde_json::from_str(&self.fallback_key()).expect("Fallback key isn't in JSON format.");
+
+        // We make some assumptions about the structure of the parsed JSON.
+        // 1) At the top level is the index "curve25519" that contains an object
+        // 2) This object is either empty or contains a singular entry to a (key) string
+        parsed_fallback["curve25519"]
+            .as_object()
+            .unwrap()
+            .iter()
+            .next()
+            .map(|(index, key_value)| FallbackKey {
+                index: index.clone(),
+                key: key_value.as_str().unwrap().to_string(),
+            })
+    }
+
     /// Creates an inbound session for sending/receiving messages from a received 'prekey' message.
     ///
     /// # Arguments
@@ -552,15 +676,38 @@ impl Drop for OlmAccount {
     }
 }
 
-#[cfg(feature = "deserialization")]
-#[test]
-fn parsed_keys() {
-    let account = OlmAccount::new();
-    let identity_keys = json::parse(&account.identity_keys()).unwrap();
-    let identity_keys_parsed = account.parsed_identity_keys();
-    assert_eq!(
-        identity_keys_parsed.curve25519(),
-        identity_keys["curve25519"]
-    );
-    assert_eq!(identity_keys_parsed.ed25519(), identity_keys["ed25519"]);
+#[cfg(test)]
+mod test {
+    use super::OlmAccount;
+    use serde_json::Value;
+
+    #[test]
+    fn fallback_key() {
+        let account = OlmAccount::new();
+
+        assert!(account.parsed_fallback_key().is_none());
+
+        account.generate_fallback_key();
+
+        let parsed_fallback = account.parsed_fallback_key().unwrap();
+        let manually_parsed_fallback: Value = serde_json::from_str(&account.fallback_key())
+            .expect("Fallback key isn't in JSON format.");
+        assert_eq!(
+            parsed_fallback.curve25519(),
+            manually_parsed_fallback["curve25519"][parsed_fallback.index()]
+        );
+    }
+
+    #[cfg(feature = "deserialization")]
+    #[test]
+    fn parsed_keys() {
+        let account = OlmAccount::new();
+        let identity_keys = json::parse(&account.identity_keys()).unwrap();
+        let identity_keys_parsed = account.parsed_identity_keys();
+        assert_eq!(
+            identity_keys_parsed.curve25519(),
+            identity_keys["curve25519"]
+        );
+        assert_eq!(identity_keys_parsed.ed25519(), identity_keys["ed25519"]);
+    }
 }
