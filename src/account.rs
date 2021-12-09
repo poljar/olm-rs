@@ -560,24 +560,24 @@ impl OlmAccount {
     pub fn fallback_key(&self) -> String {
         // get buffer length of fallback keys
         let fallback_len =
-            unsafe { olm_sys::olm_account_fallback_key_length(self.olm_account_ptr) };
+            unsafe { olm_sys::olm_account_unpublished_fallback_key_length(self.olm_account_ptr) };
         let mut fallback_buf: Vec<u8> = vec![0; fallback_len];
 
         // write fallbacks key data in the fallback key buffer
         let fallback_error = unsafe {
-            olm_sys::olm_account_fallback_key(
+            olm_sys::olm_account_unpublished_fallback_key(
                 self.olm_account_ptr,
                 fallback_buf.as_mut_ptr() as *mut _,
                 fallback_len,
             )
         };
 
-        // String is constructed from the fallback key buffer and memory is freed after exiting the scope.
-        let fallback_result = String::from_utf8(fallback_buf).unwrap();
-
         if fallback_error == errors::olm_error() {
             errors::handle_fatal_error(Self::last_error(self.olm_account_ptr));
         }
+
+        // String is constructed from the fallback key buffer and memory is freed after exiting the scope.
+        let fallback_result = String::from_utf8(fallback_buf).unwrap();
 
         fallback_result
     }
