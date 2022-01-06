@@ -221,6 +221,44 @@ impl OlmSas {
             Ok(unsafe { String::from_utf8_unchecked(mac_buffer) })
         }
     }
+
+    /// Generate a message authentication code based on the shared secret,
+    /// producing base64 strings compatible with other base64 implementations.
+    ///
+    /// Note the other public key needs to be set for this method to work.
+    /// Returns an error if it isn't set.
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - The message to produce the authentication code for.
+    ///
+    /// * `extra_info` - Extra information to mix in when generating the MAC.
+    pub fn calculate_mac_fixed_base64(&self, message: &str, extra_info: &str) -> Result<String, OlmSasError> {
+        if !self.public_key_set {
+            return Err(OlmSasError::OtherPublicKeyUnset);
+        }
+
+        let mac_length = unsafe { olm_sys::olm_sas_mac_length(self.sas_ptr) };
+        let mut mac_buffer = vec![0; mac_length];
+
+        let ret = unsafe {
+            olm_sys::olm_sas_calculate_mac_fixed_base64(
+                self.sas_ptr,
+                message.as_ptr() as *mut _,
+                message.len(),
+                extra_info.as_ptr() as *mut _,
+                extra_info.len(),
+                mac_buffer.as_mut_ptr() as *mut _,
+                mac_length,
+            )
+        };
+
+        if ret == errors::olm_error() {
+            Err(Self::last_error(self.sas_ptr))
+        } else {
+            Ok(unsafe { String::from_utf8_unchecked(mac_buffer) })
+        }
+    }
 }
 
 #[cfg(test)]
